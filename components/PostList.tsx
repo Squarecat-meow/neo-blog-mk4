@@ -27,23 +27,25 @@ export default function PostList({ posts, categories }: Props) {
   const visible = selected === "all" ? posts : posts.filter((p) => p.category === selected);
   const years = [...new Set(visible.map((p) => p.year))];
 
-  const chip = (slug: string, label: string) => (
+  // 카테고리 버튼: 선택된 것에 형광펜 띠가 그어진다 (모양은 globals.css의 .highlight-chip)
+  const chip = (slug: string, label: string, count?: number) => (
     <button
       key={slug}
       type="button"
       aria-pressed={selected === slug}
       onClick={() => setSelected(slug)}
-      className="cursor-pointer rounded-full border border-line px-3.5 py-0.5 text-[15px] leading-[1.6] hover:border-accent aria-pressed:border-ink aria-pressed:bg-ink aria-pressed:text-paper"
+      className="highlight-chip"
     >
       {label}
+      {count != null && <span className="ml-1 text-[0.8em] text-muted">{count}</span>}
     </button>
   );
 
   return (
     <>
-      <div className="mt-[18px] mb-1.5 flex flex-wrap gap-2" role="group" aria-label="카테고리">
+      <div className="mt-[14px] mb-1.5 flex flex-wrap gap-x-5 gap-y-2" role="group" aria-label="카테고리">
         {chip("all", "전체")}
-        {categories.map((c) => chip(c.slug, `${c.name} ${c.count}`))}
+        {categories.map((c) => chip(c.slug, c.name, c.count))}
       </div>
 
       {visible.length === 0 && <p className="py-6 text-muted">아직 글이 없어요.</p>}
