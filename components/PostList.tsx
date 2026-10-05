@@ -19,13 +19,25 @@ type Props = {
 // date는 UTC 자정으로 저장돼 있어서 UTC 기준으로 읽어야 하루가 밀리지 않는다
 const monthDay = (iso: string) => iso.slice(5, 10).replace("-", ".");
 
-// 카테고리 칩 + 연도별 목차. 필터는 정적 사이트라 브라우저에서만 처리한다
+const PAGE_SIZE = 10; // 처음에 보여줄 글 수, "더 보기"를 누를 때마다 늘어나는 글 수
+
+// 카테고리 칩 + 연도별 목차. 필터와 "더 보기"는 정적 사이트라 브라우저에서만 처리한다
+// (글 목록 데이터는 페이지에 이미 다 들어 있고, 보여주는 개수만 조절한다)
 export default function PostList({ posts, categories }: Props) {
   const [selected, setSelected] = useState("all");
+  const [limit, setLimit] = useState(PAGE_SIZE);
   const names = Object.fromEntries(categories.map((c) => [c.slug, c.name]));
 
-  const visible = selected === "all" ? posts : posts.filter((p) => p.category === selected);
+  const filtered = selected === "all" ? posts : posts.filter((p) => p.category === selected);
+  const visible = filtered.slice(0, limit);
+  const remaining = filtered.length - visible.length;
   const years = [...new Set(visible.map((p) => p.year))];
+
+  // 카테고리를 바꾸면 다시 처음 10개부터 보여준다
+  const selectCategory = (slug: string) => {
+    setSelected(slug);
+    setLimit(PAGE_SIZE);
+  };
 
   // 카테고리 버튼: 선택된 것에 형광펜 띠가 그어진다 (모양은 globals.css의 .highlight-chip)
   const chip = (slug: string, label: string, count?: number) => (
@@ -33,7 +45,7 @@ export default function PostList({ posts, categories }: Props) {
       key={slug}
       type="button"
       aria-pressed={selected === slug}
-      onClick={() => setSelected(slug)}
+      onClick={() => selectCategory(slug)}
       className="highlight-chip"
     >
       {label}
@@ -75,6 +87,15 @@ export default function PostList({ posts, categories }: Props) {
           </ol>
         </section>
       ))}
+
+      {remaining > 0 && (
+        <div className="mt-8 text-center">
+          <button type="button" onClick={() => setLimit((n) => n + PAGE_SIZE)} className="highlight-chip">
+            더 보기
+            <span className="ml-1.5 text-[0.8em] text-muted">{remaining}개 남음</span>
+          </button>
+        </div>
+      )}
     </>
   );
 }
