@@ -16,7 +16,7 @@
 | --- | --- |
 | 프레임워크 | Next.js (App Router), `output: 'export'`, TypeScript |
 | 콘텐츠 | Obsidian `.md` → Velite (Zod 스키마로 frontmatter 검증) |
-| Markdown 확장 | 글 간 링크용 wikilink 플러그인(`remark-wiki-link-plus` 계열), `rehype-callouts` |
+| Markdown 확장 | 글 간 링크용 자체 remark 플러그인(`lib/remark-wikilink.ts`), `rehype-callouts` |
 | 스타일 | Tailwind CSS + `@tailwindcss/typography` |
 | 코드 하이라이트 | `rehype-pretty-code` (shiki) |
 | 검색 | Pagefind |
@@ -82,7 +82,10 @@ seriesOrder: 2           # 선택
 
 - Obsidian 설정을 맞춘다: **Use [[Wikilinks]] 끄기**(이미지는 표준 `![](path)`), 새 첨부파일 위치는 "현재 파일과 같은 폴더".
   - 이유: `![[image]]` 임베드는 파일명에 밑줄이 있으면 깨지는 사례가 있고, 표준 문법이면 별도 플러그인이 필요 없다.
-- 글 사이 링크(`[[글-파일명]]`)만 wikilink로 처리한다. 파일명 → `/연도/slug`로 변환하고, **존재하지 않는 링크는 빌드를 실패**시킨다.
+- 글 사이 링크(`[[slug]]`, `[[slug|텍스트]]`, `[[slug#제목]]`)만 wikilink로 처리한다. slug → `/연도/slug`로 변환한다.
+  - **존재하지 않는 글 링크는 빌드를 실패시키지 않고 경고만** 띄운다. 링크는 `/slug`로 남아서 클릭하면 404가 뜬다.
+  - `![[...]]` 임베드는 변환하지 않고 글자 그대로 두며 경고한다.
+  - 외부 플러그인 대신 직접 만든 이유: `remark-wiki-link-plus`(마지막 릴리스 2022)는 Velite의 unified 11에서 실행되지 않고, 후속인 `@flowershow/remark-wiki-link`는 npm 최신판(4.0.0)이 빌드 결과물 없이 배포되는 등 관리 상태가 불안하다 (2026-10 확인).
 - 콜아웃(`> [!note]`)은 `rehype-callouts`로 렌더링한다.
 - 수식(KaTeX)과 Mermaid는 쓰지 않는다.
 - 노트 임베드(transclusion), 블록 참조 등 Obsidian 고급 문법은 지원하지 않는다.
@@ -195,7 +198,6 @@ scale="4.5"            (폭의 약 0.81%)
 공식 문서/실제 동작으로 확인한 뒤 구현한다.
 
 - **Velite**: 스키마 API(`s.isodate()`, `s.markdown()` 등)가 현재 버전과 맞는지, 글 안 상대경로 이미지를 결과물로 복사하는 옵션.
-- **wikilink 플러그인**: 선택한 플러그인의 유지보수 상태, Velite 파이프라인과의 호환성.
 - **OG 이미지**: `output: 'export'`에서 `ImageResponse`(satori)로 글별 OG 이미지를 만들 수 있는지. satori는 TTF/OTF/WOFF만 받고 WOFF2는 안 받는 걸로 알고 있다. 한글 폰트는 원본 TTF를 쓰며, 라이선스상 변환하지 않는다.
 - **Cloudflare Pages**: 정적 export로 만든 `my-post.html`이 확장자 없는 `/2026/my-post`로 서빙되는지.
 - **Safari/모바일**: SVG 필터(일렁임, 붓 마스크)의 성능과 렌더링. 저사양 모바일에서 첫 1~2초가 무거울 수 있다.
