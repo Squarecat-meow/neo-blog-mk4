@@ -207,6 +207,7 @@ seriesOrder: 2           # 선택
   - `main`에 push → 프로덕션 배포 (`mina.house`). `dev`에 push → 미리보기 배포 (`dev.mina-house.pages.dev`).
   - 단계: checkout → `pnpm/action-setup@v6`(pnpm 12 지원은 v6.1.0부터, 버전은 `packageManager`를 따름) → `actions/setup-node@v7`(Node 24) → `pnpm install --frozen-lockfile` → `pnpm build` → `cloudflare/wrangler-action@v4`로 `pages deploy out --project-name=mina-house --branch=<브랜치>`.
   - 저장소 Secrets: `CLOUDFLARE_API_TOKEN`(권한: Account → Cloudflare Pages → Edit), `CLOUDFLARE_ACCOUNT_ID`.
+  - **wrangler는 devDependency로 둔다.** 없으면 wrangler-action이 pnpm으로 설치하는데, pnpm 12가 `workerd`의 빌드 스크립트를 허락받지 않았다며 `ERR_PNPM_IGNORED_BUILDS`로 실패한다(첫 배포에서 실제로 실패). 설치돼 있으면 액션이 그 버전을 그대로 쓴다. `workerd`는 `pnpm-workspace.yaml`의 `allowBuilds`에서 꺼 둔다(정적 파일 업로드인 `pages deploy`는 workerd 실행 파일이 필요 없다).
 - Cloudflare Pages 프로젝트 이름은 `mina-house`, production branch는 `main`.
 - GitHub 저장소는 공개. 커밋 작성자 이메일(`yozumina@serafuku.moe`)이 커밋 기록에 공개되는 것은 알고 그대로 둔다.
 
