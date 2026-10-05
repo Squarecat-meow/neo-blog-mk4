@@ -1,15 +1,13 @@
-import { posts } from "#site/content";
 import BrushDivider from "@/components/BrushDivider";
 import Hero from "@/components/Hero";
 import PostList, { type PostListItem } from "@/components/PostList";
 import ProfileSidebar from "@/components/ProfileSidebar";
 import SiteHeader from "@/components/SiteHeader";
+import { postsByDate } from "@/lib/posts";
 import { categoryNames, site } from "@/site.config";
 
 export default function Home() {
-  const items: PostListItem[] = [...posts]
-    .sort((a, b) => b.date.localeCompare(a.date))
-    .map(({ url, title, date, year, category }) => ({ url, title, date, year, category }));
+  const items: PostListItem[] = postsByDate.map(({ url, title, date, year, category }) => ({ url, title, date, year, category }));
 
   // 칩 순서는 site.config.ts의 카테고리 순서를 따르고, 매핑에 없는 카테고리는 뒤에 붙인다
   const counts = new Map<string, number>();
