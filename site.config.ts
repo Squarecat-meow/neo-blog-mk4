@@ -24,8 +24,12 @@ export const profile: {
   bio: "<head>와 <body>로 이루어진 사람",
   avatar: { src: "/character.webp", zoom: 2.6, position: "47% 20%" }, // 임시: 캐릭터 얼굴을 잘라 쓴다
   links: [
-    // 예: { kind: "github", label: "GitHub", href: "https://github.com/아이디" },
-    // 예: { kind: "email", label: "이메일", href: "mailto:주소@example.com" },
+    {
+      kind: "github",
+      label: "GitHub",
+      href: "https://github.com/Squarecat-meow",
+    },
+    { kind: "link", label: "미스키", href: "https://serafuku.moe/@Yozumina" },
   ],
 };
 
