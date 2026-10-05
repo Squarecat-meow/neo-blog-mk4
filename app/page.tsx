@@ -2,6 +2,7 @@ import { posts } from "#site/content";
 import BrushDivider from "@/components/BrushDivider";
 import Hero from "@/components/Hero";
 import PostList, { type PostListItem } from "@/components/PostList";
+import ProfileSidebar from "@/components/ProfileSidebar";
 import SiteHeader from "@/components/SiteHeader";
 import { categoryNames, site } from "@/site.config";
 
@@ -30,9 +31,15 @@ export default function Home() {
           </div>
         </Hero>
 
-        <div className="mx-auto max-w-[860px] px-5 pt-4 pb-14">
+        {/* 넓은 화면(lg 이상): 왼쪽 프로필 사이드바 + 오른쪽 목록. 좁은 화면: 프로필이 목록 위로 */}
+        <div className="mx-auto max-w-[1140px] px-5 pt-4 pb-14">
           <BrushDivider />
-          <PostList posts={items} categories={categories} />
+          <div className="mt-6 grid gap-x-12 gap-y-6 lg:grid-cols-[220px_minmax(0,1fr)]">
+            <ProfileSidebar />
+            <div>
+              <PostList posts={items} categories={categories} />
+            </div>
+          </div>
         </div>
       </main>
     </>

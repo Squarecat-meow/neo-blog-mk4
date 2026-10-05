@@ -18,7 +18,8 @@ const gowun = Gowun_Dodum({
 });
 
 export const metadata: Metadata = {
-  title: site.name,
+  // 하위 페이지는 "소개 | 새론이의 사계절"처럼 뒤에 블로그 이름이 붙는다
+  title: { default: site.name, template: `%s | ${site.name}` },
   description: site.description,
 };
 
