@@ -1,6 +1,30 @@
-import { defineCollection, defineConfig, logger, s } from "velite";
-import remarkWikilink from "./lib/remark-wikilink";
-import { categoryNames } from "./site.config";
+import rehypeCallouts from "rehype-callouts";
+import rehypePrettyCode, { type Options as PrettyCodeOptions } from "rehype-pretty-code";
+import rehypeSlug from "rehype-slug";
+import {
+  defineCollection,
+  defineConfig,
+  logger,
+  rehypeCopyLinkedFiles,
+  s,
+  type MarkdownOptions,
+} from "velite";
+import { decodeImageSrc, encodeImageSrc } from "./lib/rehype-image-src";
+import remarkImage from "./lib/remark-image";
+import remarkWikilink, { readPosts, resolveWikilinkText } from "./lib/remark-wikilink";
+import { categoryNames, seriesNames } from "./site.config";
+
+type RehypePlugin = NonNullable<MarkdownOptions["rehypePlugins"]>[number];
+
+// 글 옆 이미지를 public/static/<이름>-<해시>.<확장자> 로 복사하고 src를 /static/... 으로 바꾼다
+const assetOutput = {
+  assets: "public/static",
+  base: "/static/",
+  name: "[name]-[hash:8].[ext]",
+  format: "esm",
+} as const;
+
+const POSTS_DIR = "content/posts";
 
 // 영문 kebab-case (slug, category, series 공통)
 const kebab = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -15,6 +39,31 @@ const readingTime = () =>
     return Math.max(1, Math.round(hangul / 500 + words / 265));
   });
 
+// description이 없을 때 쓸 자동 발췌. 본문 문단만 모아서 앞 150자를 쓴다 (소제목, 코드, 콜아웃 제외).
+// s.excerpt()는 소제목과 코드까지 섞인 텍스트를 그대로 잘라서 따로 만든다.
+type TextNode = { type: string; value?: string; children?: TextNode[] };
+const EXCERPT_LENGTH = 150;
+const excerpt = () =>
+  s.custom<string | undefined>().transform((_, { meta }) => {
+    const toText = (node: TextNode): string => node.value ?? node.children?.map(toText).join("") ?? "";
+    const paragraphs = (meta.mdast?.children ?? []) as TextNode[];
+    const raw = paragraphs
+      .filter((node) => node.type === "paragraph")
+      .map(toText)
+      .join(" ");
+    // [[slug]]는 본문 링크와 똑같이 대상 글 제목(또는 보일 텍스트)으로 바꾼다
+    const text = resolveWikilinkText(raw, readPosts(POSTS_DIR)).replace(/\s+/g, " ").trim();
+    if (text.length <= EXCERPT_LENGTH) return text;
+    // 단어(어절) 중간에서 자르지 않도록 제한 안의 마지막 공백에서 자른다
+    const cut = text.slice(0, EXCERPT_LENGTH + 1);
+    return `${cut.slice(0, cut.lastIndexOf(" ")).trimEnd() || cut.slice(0, EXCERPT_LENGTH)}…`;
+  });
+
+// YAML에서 공백 뒤의 #은 주석이라, `title: 블로그 만들기 #2`는 "블로그 만들기"로 조용히 잘린다.
+// 따옴표 없이 " #"이 들어간 frontmatter 줄을 찾아낸다.
+const UNQUOTED_HASH = /^(\w+):\s+(?!["'])[^\n]*\s#/gm;
+const FRONTMATTER = /^---\r?\n([\s\S]*?)\r?\n---/;
+
 const posts = defineCollection({
   name: "Post",
   // content/posts/<연도>/<slug>/index.md 구조만 글로 인정한다
@@ -22,6 +71,7 @@ const posts = defineCollection({
   schema: s
     .object({
       title: s.string(),
+      description: s.string().optional(), // 없으면 본문 앞부분을 자동 발췌한다
       date: s.isodate(),
       category: s.string().regex(kebab, "category는 영문 kebab-case여야 한다"),
       series: s.string().regex(kebab, "series는 영문 kebab-case여야 한다").optional(),
@@ -29,10 +79,16 @@ const posts = defineCollection({
       // 파일 위치에서 계산되는 값들 (frontmatter에 적지 않는다)
       path: s.path(), // "posts/2026/content-pipeline"
       readingTime: readingTime(),
+      excerpt: excerpt(),
       content: s.markdown(),
     })
-    .transform(({ path, ...data }, { addIssue }) => {
+    .transform(({ path, excerpt, ...data }, { addIssue, meta }) => {
       const [, year, slug] = path.split("/");
+
+      const frontmatter = String(meta.value).match(FRONTMATTER)?.[1] ?? "";
+      for (const [, key] of frontmatter.matchAll(UNQUOTED_HASH)) {
+        addIssue({ fatal: true, code: "custom", message: `${key} 값에 ' #'이 있으면 따옴표로 감싸야 한다 (뒤가 주석으로 잘린다)` });
+      }
 
       if (!kebab.test(slug)) {
         addIssue({ fatal: true, code: "custom", message: `폴더 이름(slug) '${slug}'이 영문 kebab-case가 아니다` });
@@ -46,7 +102,7 @@ const posts = defineCollection({
         addIssue({ fatal: true, code: "custom", message: "series와 seriesOrder는 함께 적어야 한다" });
       }
 
-      return { ...data, year, slug, url: `/${year}/${slug}` };
+      return { ...data, description: data.description ?? excerpt, year, slug, url: `/${year}/${slug}` };
     }),
 });
 
@@ -56,15 +112,33 @@ export default defineConfig({
   // 주의: velite 0.4.0 CLI는 플래그 기본값(false)이 이 값과 output.clean을 덮어쓴다.
   // 그래서 package.json의 build 스크립트에서 --strict --clean을 직접 넘긴다.
   strict: true,
-  output: {
-    data: ".velite",
-    assets: "public/static",
-    base: "/static/",
-    name: "[name]-[hash:8].[ext]",
-  },
+  output: { data: ".velite", ...assetOutput },
   collections: { posts },
   markdown: {
-    remarkPlugins: [[remarkWikilink, { postsDir: "content/posts" }]],
+    remarkPlugins: [[remarkWikilink, { postsDir: POSTS_DIR }], remarkImage],
+    // velite 기본 이미지 복사는 사용자 플러그인보다 먼저 돌아서 %20 경로를 고칠 틈이 없다.
+    // 그래서 끄고, 경로 디코딩 → 복사 순서로 직접 넣는다.
+    copyLinkedFiles: false,
+    rehypePlugins: [
+      decodeImageSrc,
+      [rehypeCopyLinkedFiles, assetOutput],
+      [encodeImageSrc, assetOutput],
+      // 소제목에 id를 붙인다 ([[slug#제목]] 링크와 같은 github-slugger 규칙)
+      rehypeSlug as RehypePlugin,
+      // > [!note] 콜아웃.
+      // velite가 unified 타입을 자체 번들에 넣어서 rehype-callouts의 unified 타입과 이름만 다르게 충돌한다.
+      // 런타임은 같은 unified 11이라 문제없으므로 velite 쪽 타입으로 맞춰준다.
+      rehypeCallouts as RehypePlugin,
+      [
+        rehypePrettyCode,
+        {
+          // 라이트/다크 색을 둘 다 CSS 변수(--shiki-light, --shiki-dark)로 넣는다. 전환은 CSS에서 한다
+          theme: { light: "github-light", dark: "github-dark" },
+          // 배경은 테마 색 대신 디자인 토큰(--field)을 쓴다
+          keepBackground: false,
+        } satisfies PrettyCodeOptions,
+      ],
+    ],
   },
   // 글 하나만 봐서는 알 수 없는, 글들 사이의 규칙을 검사한다
   prepare: ({ posts }) => {
@@ -89,6 +163,11 @@ export default defineConfig({
     for (const category of new Set(posts.map((p) => p.category))) {
       if (!(category in categoryNames)) {
         logger.warn(`카테고리 '${category}'의 표시 이름이 site.config.ts에 없다`);
+      }
+    }
+    for (const series of new Set(posts.flatMap((p) => p.series ?? []))) {
+      if (!(series in seriesNames)) {
+        logger.warn(`시리즈 '${series}'의 표시 이름이 site.config.ts에 없다`);
       }
     }
   },

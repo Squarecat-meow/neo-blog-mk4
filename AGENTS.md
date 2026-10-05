@@ -62,7 +62,8 @@ content/
 
 ```md
 ---
-title: 블로그 만들기 #2
+title: "블로그 만들기 #2"  # ' #'이 들어가면 따옴표 필수
+description: 한 줄 설명   # 선택. 없으면 본문 앞부분 자동 발췌
 date: 2026-09-27
 category: dev            # 영문 kebab-case slug
 series: blog-build       # 선택
@@ -71,24 +72,34 @@ seriesOrder: 2           # 선택
 ```
 
 - Zod 스키마(Velite)로 검증한다. 필수: `title`, `date`, `category`.
+- YAML에서 공백 뒤 `#`은 주석이라 `title: 블로그 만들기 #2`는 "블로그 만들기"로 잘린다. 따옴표 없이 ` #`이 든 frontmatter 값은 **빌드를 실패**시킨다.
+- `description`(선택)은 meta description/OG에 쓴다. 없으면 본문 문단(소제목, 코드, 콜아웃 제외) 앞 150자를 어절 단위로 잘라 자동으로 만든다.
 - **카테고리만 쓴다. 태그는 없다.**
 - 카테고리는 글에 적힌 값을 빌드 시점에 모아 **동적으로 생성**한다 (고정 enum 없음).
   - 화면에 보일 한글 이름은 `slug → 이름` 매핑 객체로 따로 둔다.
   - 매핑에 없는 slug가 나오면 **빌드를 실패시키지 말고 경고만** 띄운다 (오타 방지용).
 - **시리즈**는 frontmatter의 `series` + `seriesOrder`로만 만든다. 글 안에 목차 링크를 손으로 쓰지 않는다. 시리즈 목차와 이전/다음 글은 컴포넌트가 자동 생성한다.
-- 시리즈 표시 이름은 `series slug → 이름` 매핑으로 둔다.
+- 시리즈 표시 이름은 `series slug → 이름` 매핑으로 둔다. 카테고리처럼 매핑에 없으면 경고만 띄운다.
+- `series`와 `seriesOrder`는 함께 쓴다. 같은 시리즈 안에서 `seriesOrder`가 겹치면 빌드를 실패시킨다.
+- 카테고리/시리즈 표시 이름과 블로그 이름, 소개 문구는 `site.config.ts`에서 관리한다.
 
 ## 4. Markdown / Obsidian 처리 (확정)
 
 - Obsidian 설정을 맞춘다: **Use [[Wikilinks]] 끄기**(이미지는 표준 `![](path)`), 새 첨부파일 위치는 "현재 파일과 같은 폴더".
   - 이유: `![[image]]` 임베드는 파일명에 밑줄이 있으면 깨지는 사례가 있고, 표준 문법이면 별도 플러그인이 필요 없다.
 - 글 사이 링크(`[[slug]]`, `[[slug|텍스트]]`, `[[slug#제목]]`)만 wikilink로 처리한다. slug → `/연도/slug`로 변환한다.
+  - 보일 텍스트를 안 쓰면 대상 글의 `title`을 보여준다.
+  - `#제목`은 소제목 id와 같은 규칙(github-slugger)으로 바꾼다. 소제목 id는 `rehype-slug`가 붙인다.
   - **존재하지 않는 글 링크는 빌드를 실패시키지 않고 경고만** 띄운다. 링크는 `/slug`로 남아서 클릭하면 404가 뜬다.
   - `![[...]]` 임베드는 변환하지 않고 글자 그대로 두며 경고한다.
   - 외부 플러그인 대신 직접 만든 이유: `remark-wiki-link-plus`(마지막 릴리스 2022)는 Velite의 unified 11에서 실행되지 않고, 후속인 `@flowershow/remark-wiki-link`는 npm 최신판(4.0.0)이 빌드 결과물 없이 배포되는 등 관리 상태가 불안하다 (2026-10 확인).
-- 콜아웃(`> [!note]`)은 `rehype-callouts`로 렌더링한다.
+- 콜아웃(`> [!note]`)은 `rehype-callouts`로 렌더링한다. 스타일은 플러그인 내장 테마 대신 디자인 토큰으로 직접 입힌다.
+- 코드 블록은 `rehype-pretty-code`로 라이트/다크 색을 CSS 변수(`--shiki-light`, `--shiki-dark`)로 넣고 전환은 CSS에서 한다. 배경은 `--field`를 쓴다 (`keepBackground: false`). 코드 테마(`github-light`/`github-dark`)는 임시.
 - 수식(KaTeX)과 Mermaid는 쓰지 않는다.
 - 노트 임베드(transclusion), 블록 참조 등 Obsidian 고급 문법은 지원하지 않는다.
+- 각주(`[^1]`)는 거의 쓰지 않을 것 같아 따로 처리하지 않는다 (GFM 기본 동작 그대로). 처음 쓰게 되면 아래를 먼저 처리한다.
+  - 글 끝에 붙는 `<h2 class="sr-only">Footnotes</h2>`와 `↩` 링크의 `aria-label="Back to reference 1"`이 영어다 (`remark-rehype` 기본값). Velite가 `footnoteLabel`/`footnoteBackLabel` 옵션을 열어 두지 않아서, 바꾸려면 작은 rehype 플러그인이 필요하다.
+  - `sr-only` 클래스는 `.velite/` 결과물에만 있다. Tailwind가 gitignore된 폴더를 스캔하지 않으면 CSS가 생성되지 않아 "Footnotes" 제목이 화면에 그대로 보일 수 있다. 글 페이지에서 실제로 확인한다.
 
 ## 5. 이미지
 
@@ -97,7 +108,10 @@ seriesOrder: 2           # 선택
   - 글 이미지가 많아지거나 용량 문제가 반복되면 다시 검토한다. Markdown 쪽 문법(`![](./cover.png)`)은 그대로라서 나중에 변환을 붙여도 글을 고칠 필요가 없다.
 - 일러스트 원본은 **투명 배경 PNG**. 라이트/다크 모드가 같은 파일을 쓴다 (다크용 별도 파일 없음).
 - 압축할 때 가루 알갱이 질감이 뭉개지지 않는지 눈으로 확인한다 (품질값을 높게).
-- 상대경로 이미지를 빌드 결과물로 복사하는 방식은 Velite 문서를 확인해서 정한다 (아래 "확인 필요").
+- 글 옆 상대경로 이미지는 Velite의 `rehypeCopyLinkedFiles`가 `public/static/<이름>-<해시>.<확장자>`로 복사하고 src를 `/static/...`으로 바꾼다.
+  - Velite 기본 복사(`copyLinkedFiles`)는 끄고 직접 넣는다. Obsidian이 파일명 공백을 `%20`으로 넣는데 Velite가 이를 풀지 않아 실패하기 때문에, 복사 앞뒤로 인코딩을 풀고 다시 건다 (`lib/rehype-image-src.ts`).
+- Obsidian 크기 지정 `![설명|300](a.png)`, `![설명|300x200](a.png)`은 `|숫자`를 떼어 `width`/`height`로 바꾼다.
+- alt가 빈 이미지는 경고한다 (Obsidian에서 붙여넣으면 alt가 비어 있다).
 
 ## 6. 디자인 시스템 (확정)
 
@@ -197,7 +211,6 @@ scale="4.5"            (폭의 약 0.81%)
 
 공식 문서/실제 동작으로 확인한 뒤 구현한다.
 
-- **Velite**: 스키마 API(`s.isodate()`, `s.markdown()` 등)가 현재 버전과 맞는지, 글 안 상대경로 이미지를 결과물로 복사하는 옵션.
 - **OG 이미지**: `output: 'export'`에서 `ImageResponse`(satori)로 글별 OG 이미지를 만들 수 있는지. satori는 TTF/OTF/WOFF만 받고 WOFF2는 안 받는 걸로 알고 있다. 한글 폰트는 원본 TTF를 쓰며, 라이선스상 변환하지 않는다.
 - **Cloudflare Pages**: 정적 export로 만든 `my-post.html`이 확장자 없는 `/2026/my-post`로 서빙되는지.
 - **Safari/모바일**: SVG 필터(일렁임, 붓 마스크)의 성능과 렌더링. 저사양 모바일에서 첫 1~2초가 무거울 수 있다.
