@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import ArticleBackdrop from "@/components/ArticleBackdrop";
 import BrushDivider from "@/components/BrushDivider";
 import SiteHeader from "@/components/SiteHeader";
 import { adjacentPosts, findPost, formatDate, postsByDate, seriesPosts, type Post } from "@/lib/posts";
@@ -32,9 +33,7 @@ export default async function PostPage({ params }: PageProps<"/[year]/[slug]">) 
 
   return (
     <>
-      {/* 화면에 고정된 숲 그림 배경. 글은 가운데 빈 하늘 위로 스크롤된다 (globals.css의 .article-backdrop, .article-veil) */}
-      <div className="article-backdrop" aria-hidden="true" />
-      <div className="article-veil" aria-hidden="true" />
+      <ArticleBackdrop />
       <SiteHeader />
       <main className="mx-auto max-w-[700px] px-5 pb-14">
         <article>

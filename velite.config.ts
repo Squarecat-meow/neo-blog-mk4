@@ -106,6 +106,22 @@ const posts = defineCollection({
     }),
 });
 
+// 소개 페이지 (/about). content/about.md 파일 하나를 글과 같은 Markdown 파이프라인으로 처리한다.
+// content/posts/ 밖에 있어서 글 목록에는 섞이지 않는다
+const about = defineCollection({
+  name: "About",
+  pattern: "about.md",
+  single: true,
+  schema: s
+    .object({
+      title: s.string().default("소개"),
+      description: s.string().optional(), // 없으면 본문 앞부분을 자동 발췌한다
+      excerpt: excerpt(),
+      content: s.markdown(),
+    })
+    .transform(({ excerpt, ...data }) => ({ ...data, description: data.description ?? excerpt })),
+});
+
 export default defineConfig({
   root: "content",
   // 검증 실패 시 해당 글만 빠지고 넘어가지 않도록 빌드를 멈춘다.
@@ -113,7 +129,7 @@ export default defineConfig({
   // 그래서 package.json의 build 스크립트에서 --strict --clean을 직접 넘긴다.
   strict: true,
   output: { data: ".velite", ...assetOutput },
-  collections: { posts },
+  collections: { posts, about },
   markdown: {
     remarkPlugins: [[remarkWikilink, { postsDir: POSTS_DIR }], remarkImage],
     // velite 기본 이미지 복사는 사용자 플러그인보다 먼저 돌아서 %20 경로를 고칠 틈이 없다.

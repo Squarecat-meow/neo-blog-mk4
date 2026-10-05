@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { slug as slugify } from "github-slugger";
 import { logger } from "velite";
@@ -25,6 +25,7 @@ const FRONTMATTER = /^---\r?\n([\s\S]*?)\r?\n---/;
 // dev 모드에서 새 글이나 바뀐 제목이 바로 반영되도록 파일마다 새로 읽는다 (글 수가 적어서 충분히 가볍다).
 export function readPosts(postsDir: string) {
   const posts = new Map<string, PostRef>();
+  if (!existsSync(postsDir)) return posts; // 아직 글이 하나도 없을 때 (소개 페이지만 있는 경우 등)
   const dirs = (path: string) =>
     readdirSync(path, { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name);
 
