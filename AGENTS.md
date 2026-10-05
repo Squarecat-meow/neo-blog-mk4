@@ -209,6 +209,7 @@ seriesOrder: 2           # 선택
   - 저장소 Secrets: `CLOUDFLARE_API_TOKEN`(권한: Account → Cloudflare Pages → Edit), `CLOUDFLARE_ACCOUNT_ID`.
   - **wrangler는 devDependency로 둔다.** 없으면 wrangler-action이 pnpm으로 설치하는데, pnpm 12가 `workerd`의 빌드 스크립트를 허락받지 않았다며 `ERR_PNPM_IGNORED_BUILDS`로 실패한다(첫 배포에서 실제로 실패). 설치돼 있으면 액션이 그 버전을 그대로 쓴다. `workerd`는 `pnpm-workspace.yaml`의 `allowBuilds`에서 꺼 둔다(정적 파일 업로드인 `pages deploy`는 workerd 실행 파일이 필요 없다).
 - Cloudflare Pages 프로젝트 이름은 `mina-house`, production branch는 `main`.
+- 배포 후 확인한 것 (2026-10-06, 미리보기 `dev.mina-house.pages.dev`): 확장자 없는 주소(`/about`)가 `about.html`로 서빙되고 같은 이름의 `about/` 폴더와 충돌하지 않는다. `/about.html`, `/about/`은 308로 `/about`에 리다이렉트된다. `og.png`는 `image/png`, 없는 주소는 404.
 - GitHub 저장소는 공개. 커밋 작성자 이메일(`yozumina@serafuku.moe`)이 커밋 기록에 공개되는 것은 알고 그대로 둔다.
 
 ## 7. 인터랙션 (확정)
@@ -271,7 +272,6 @@ scale="4.5"            (폭의 약 0.81%)
 
 공식 문서/실제 동작으로 확인한 뒤 구현한다.
 
-- **Cloudflare Pages**: 정적 export로 만든 `my-post.html`이 확장자 없는 `/2026/my-post`로 서빙되는지. Next가 `about.html` 옆에 같은 이름의 `about/` 폴더(RSC 데이터)도 만들기 때문에, `/about` 요청이 폴더로 가지 않고 `about.html`로 가는지도 확인한다 (로컬 `python -m http.server`는 폴더로 가서 `/about.html`로 확인해야 했다).
 - **Safari/모바일**: SVG 필터(일렁임, 붓 마스크)의 성능과 렌더링. 저사양 모바일에서 첫 1~2초가 무거울 수 있다.
 
 ## 10. 아직 정하지 않은 것
