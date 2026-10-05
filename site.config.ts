@@ -2,6 +2,7 @@
 export const site = {
   name: "새론이의 사계절",
   description: "새론이가 사계절을 보내는 방법",
+  url: "https://mina.house", // 끝 슬래시 없음. sitemap, canonical, OG 이미지의 전체 주소에 쓴다
 } as const;
 
 export type ProfileLink = {

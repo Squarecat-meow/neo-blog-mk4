@@ -4,24 +4,33 @@ import { notFound } from "next/navigation";
 import ArticleBackdrop from "@/components/ArticleBackdrop";
 import BrushDivider from "@/components/BrushDivider";
 import SiteHeader from "@/components/SiteHeader";
-import { adjacentPosts, findPost, formatDate, postsByDate, seriesPosts, type Post } from "@/lib/posts";
+import { adjacentPosts, findPost, formatDate, postParams, seriesPosts, type Post } from "@/lib/posts";
+import { ogImage, siteOpenGraph } from "@/lib/seo";
 import { categoryNames, seriesNames } from "@/site.config";
 
 // 정적 export: 모든 글 주소를 빌드 때 확정하고, 그 밖의 주소는 404
 export const dynamicParams = false;
 
-export function generateStaticParams() {
-  const params = postsByDate.map((p) => ({ year: p.year, slug: p.slug }));
-  // output: export는 빈 배열이면 빌드를 실패시킨다. 글이 하나도 없을 때만 자리용 경로를 넘기고,
-  // 아래에서 글을 못 찾으므로 404로 렌더된다 (out/0000/_.html이 생기지만 링크되지 않는다)
-  return params.length > 0 ? params : [{ year: "0000", slug: "_" }];
-}
+export const generateStaticParams = postParams;
 
 export async function generateMetadata({ params }: PageProps<"/[year]/[slug]">): Promise<Metadata> {
   const { year, slug } = await params;
   const post = findPost(year, slug);
   if (!post) return {};
-  return { title: post.title, description: post.description };
+  return {
+    title: post.title,
+    description: post.description,
+    alternates: { canonical: post.url },
+    openGraph: {
+      ...siteOpenGraph,
+      type: "article",
+      url: post.url,
+      title: post.title,
+      description: post.description,
+      publishedTime: post.date,
+      images: ogImage(`${post.url}/og.png`, post.title),
+    },
+  };
 }
 
 export default async function PostPage({ params }: PageProps<"/[year]/[slug]">) {

@@ -21,7 +21,7 @@
 | 코드 하이라이트 | `rehype-pretty-code` (shiki) |
 | SEO | sitemap, 글별 OG 이미지 (RSS는 만들지 않는다) |
 | 통계 | Cloudflare Web Analytics |
-| 호스팅/배포 | Cloudflare Pages + GitHub Actions, 기존 도메인 사용 |
+| 호스팅/배포 | Cloudflare Pages + GitHub Actions, 기존 도메인 `https://mina.house` (`site.config.ts`의 `site.url`) |
 | 다크 모드 | 지원 필수 |
 | 아이콘 | `lucide-react`. SVG를 직접 써 넣지 않는다. 예외: lucide 1.x에 없는 브랜드 로고(GitHub)만 직접 그린다 |
 
@@ -181,6 +181,18 @@ seriesOrder: 2           # 선택
   - 굵은 글씨(`**…**`)는 형광펜 띠(`--accent` 45%, 글자 아래쪽)로 표시한다. 본문 폰트(Gowun Dodum)에 굵기가 400뿐이고 `font-synthesis: none`이라 굵게 보이지 않기 때문이다. 줄바꿈돼도 띠가 이어지도록 배경 + `box-decoration-break: clone`을 쓴다.
 - 글이 하나도 없으면 `output: export`가 빈 `generateStaticParams`로 빌드를 실패시킨다. 그때만 자리용 경로(`/0000/_`, 404로 렌더)를 넘긴다.
 
+### SEO
+
+- 주소의 기준은 `site.config.ts`의 `site.url`(`https://mina.house`, 끝 슬래시 없음). 레이아웃의 `metadataBase`로 canonical, OG 주소를 전체 주소로 만든다.
+- **canonical**: 홈 `/`, 소개 `/about`, 글 `/연도/slug`.
+- **sitemap**: `app/sitemap.ts` → `out/sitemap.xml` (홈, 소개, 모든 글. 글은 `date`를 lastmod로). **robots**: `app/robots.ts` → `out/robots.txt` (sitemap 위치 안내).
+- **OG 이미지** (1200×630, 빌드 때 PNG로 생성, `lib/og.tsx`):
+  - 글: 글 페이지 숲 그림 위 가운데 반투명 종이 카드에 "카테고리 · 날짜", 제목(최대 3줄, 넘치면 말줄임), 주황 짧은 선 + 블로그 이름. → `/연도/slug/og.png`
+  - 홈/소개: 히어로처럼 숲 + 캐릭터 위에 블로그 이름과 부제목. → `/og.png`
+  - 받는 쪽 테마를 모르므로 라이트 색만 쓴다. X(트위터)는 `summary_large_image` 카드.
+  - `opengraph-image` 파일 규칙 대신 `og.png/route.tsx` 라우트 핸들러를 쓴다. 파일 규칙은 확장자 없는 파일(`opengraph-image`)을 만들어서 호스팅에 따라 `image/png`로 서빙되지 않을 수 있기 때문이다. 정적 export에서는 라우트에 `dynamic = "force-static"`이 필요하다.
+  - satori는 woff2와 webp를 읽지 못해서 `assets/`에 따로 둔다: 고운 바탕 Bold 원본 TTF(`assets/fonts/`, OFL, 라이선스 파일 포함, 8MB라 Bold만), 배경 JPEG(`assets/og/`, 한 번 변환해 커밋한 파일. 빌드 파이프라인이 아니다).
+
 ## 7. 인터랙션 (확정)
 
 움직임은 **홈의 일러스트 한 곳**에 몰아서 쓴다. 나머지는 조용하게 둔다.
@@ -241,14 +253,12 @@ scale="4.5"            (폭의 약 0.81%)
 
 공식 문서/실제 동작으로 확인한 뒤 구현한다.
 
-- **OG 이미지**: `output: 'export'`에서 `ImageResponse`(satori)로 글별 OG 이미지를 만들 수 있는지. satori는 TTF/OTF/WOFF만 받고 WOFF2는 안 받는 걸로 알고 있다. 한글 폰트는 원본 TTF를 쓰며, 라이선스상 변환하지 않는다.
 - **Cloudflare Pages**: 정적 export로 만든 `my-post.html`이 확장자 없는 `/2026/my-post`로 서빙되는지. Next가 `about.html` 옆에 같은 이름의 `about/` 폴더(RSC 데이터)도 만들기 때문에, `/about` 요청이 폴더로 가지 않고 `about.html`로 가는지도 확인한다 (로컬 `python -m http.server`는 폴더로 가서 `/about.html`로 확인해야 했다).
 - **Safari/모바일**: SVG 필터(일렁임, 붓 마스크)의 성능과 렌더링. 저사양 모바일에서 첫 1~2초가 무거울 수 있다.
 
 ## 10. 아직 정하지 않은 것
 
 - 본문 폰트 최종 선택
-- OG 이미지 디자인
 - 패키지 매니저, 린트/포맷 설정, `package.json` 스크립트 (정해지면 이 문서에 추가)
 - **검색 (나중에 검토)**: 처음엔 Pagefind로 확정했으나 지금은 넣지 않는다 (2026-10-06). 글이 적을 때는 카테고리 필터, 연도별 목차, "더 보기"로 충분하고, 검색창 UI를 그림책 분위기에 맞게 다시 꾸미는 비용이 크다.
   - 다시 볼 시점: 글이 50개를 넘거나, 예전 글을 찾기 불편해질 때.

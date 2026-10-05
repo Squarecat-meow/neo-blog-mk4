@@ -3,11 +3,14 @@ import type { Metadata } from "next";
 import ArticleBackdrop from "@/components/ArticleBackdrop";
 import { ProfileAvatar, ProfileLinks } from "@/components/Profile";
 import SiteHeader from "@/components/SiteHeader";
+import { siteOpenGraph } from "@/lib/seo";
 import { profile } from "@/site.config";
 
 export const metadata: Metadata = {
   title: about.title,
   description: about.description,
+  alternates: { canonical: "/about" },
+  openGraph: { ...siteOpenGraph, url: "/about", title: about.title, description: about.description },
 };
 
 // 소개 페이지: 위에는 프로필(사이드바와 같은 내용), 아래에는 content/about.md 본문

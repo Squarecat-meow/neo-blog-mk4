@@ -5,6 +5,14 @@ export type { Post };
 // 최신 글이 먼저
 export const postsByDate = [...posts].sort((a, b) => b.date.localeCompare(a.date));
 
+// 글 페이지와 OG 이미지가 함께 쓰는 정적 경로 목록.
+// output: export는 빈 배열이면 빌드를 실패시킨다. 글이 하나도 없을 때만 자리용 경로를 넘기고,
+// 글을 못 찾으므로 404로 렌더된다 (out/0000/_.html이 생기지만 링크되지 않는다)
+export function postParams() {
+  const params = postsByDate.map((p) => ({ year: p.year, slug: p.slug }));
+  return params.length > 0 ? params : [{ year: "0000", slug: "_" }];
+}
+
 export function findPost(year: string, slug: string) {
   return posts.find((p) => p.year === year && p.slug === slug);
 }

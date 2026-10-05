@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Gowun_Batang, Gowun_Dodum } from "next/font/google";
+import { siteOpenGraph } from "@/lib/seo";
 import { site } from "@/site.config";
 import "./globals.css";
 
@@ -18,9 +19,15 @@ const gowun = Gowun_Dodum({
 });
 
 export const metadata: Metadata = {
+  // canonical, OG 이미지 등 상대 주소를 https://mina.house/... 전체 주소로 바꾸는 기준
+  metadataBase: new URL(site.url),
   // 하위 페이지는 "소개 | 새론이의 사계절"처럼 뒤에 블로그 이름이 붙는다
   title: { default: site.name, template: `%s | ${site.name}` },
   description: site.description,
+  alternates: { canonical: "/" },
+  openGraph: { ...siteOpenGraph, url: "/", title: site.name, description: site.description },
+  // X(트위터) 등에서 큰 이미지 카드로 보이게 한다. 이미지는 og:image를 쓴다
+  twitter: { card: "summary_large_image" },
 };
 
 // 사용자가 고른 테마가 있으면 첫 페인트 전에 적용한다 (없으면 CSS가 OS 설정을 따른다)
