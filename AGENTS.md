@@ -24,6 +24,7 @@
 | 통계 | Cloudflare Web Analytics |
 | 호스팅/배포 | Cloudflare Pages + GitHub Actions, 기존 도메인 사용 |
 | 다크 모드 | 지원 필수 |
+| 아이콘 | `lucide-react`. SVG를 직접 써 넣지 않는다. 예외: lucide 1.x에 없는 브랜드 로고(GitHub)만 직접 그린다 |
 
 ### 정적 export 제약
 
