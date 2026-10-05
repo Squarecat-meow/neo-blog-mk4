@@ -101,22 +101,26 @@ body {
   }
 }
 
-/* ---------- 다크 모드 토글 아이콘: 현재 테마의 반대를 보여준다 ---------- */
-.theme-icon-sun {
+/* ---------- 테마별로 보이는 요소 (다크 모드 토글의 문구와 아이콘) ----------
+   .when-light는 라이트일 때만, .when-dark는 다크일 때만 보인다. data-theme이 없으면 OS 설정을 따른다 */
+.when-light {
+  display: inline-flex;
+}
+.when-dark {
   display: none;
 }
-:root[data-theme="dark"] .theme-icon-sun {
-  display: block;
-}
-:root[data-theme="dark"] .theme-icon-moon {
+:root[data-theme="dark"] .when-light {
   display: none;
+}
+:root[data-theme="dark"] .when-dark {
+  display: inline-flex;
 }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .theme-icon-sun {
-    display: block;
-  }
-  :root:not([data-theme="light"]) .theme-icon-moon {
+  :root:not([data-theme="light"]) .when-light {
     display: none;
+  }
+  :root:not([data-theme="light"]) .when-dark {
+    display: inline-flex;
   }
 }
 
