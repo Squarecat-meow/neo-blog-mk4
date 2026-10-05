@@ -1,9 +1,243 @@
-<!-- BEGIN:nextjs-agent-rules -->
+# AGENTS.md
 
-# This is NOT the Next.js you know
+이 저장소에서 작업하는 코딩 에이전트와 사람을 위한 프로젝트 가이드다.
+**확정** 사항은 그대로 따른다. **미확인/미정** 항목은 마지막 섹션에 모아뒀다. 확정 사항을 바꾸자는 제안은 구현하기 전에 먼저 묻는다.
 
-This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+## 1. 프로젝트 개요
 
-This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+- Obsidian으로 쓴 Markdown 글을 **완전 정적 사이트**로 발행하는 개인 블로그.
+- 이전 버전(Notion CMS + Notion API + Cloudflare Workers)은 폐기하고 새로 시작한다. 기존 Notion 글은 가져오지 않는다.
+- 블로그 이름 "숲길 노트"와 소개 문구 "만들고, 고치고, 적어두는 곳"은 **임시**다. 코드에 하드코딩하지 말고 설정 한 곳에서 관리한다.
+- 디자인 컨셉은 직접 그린 그림책풍 일러스트가 주인공인 "그림책 한 권"이다.
 
-<!-- END:nextjs-agent-rules -->
+## 2. 기술 스택 (확정)
+
+| 영역 | 선택 |
+| --- | --- |
+| 프레임워크 | Next.js (App Router), `output: 'export'`, TypeScript |
+| 콘텐츠 | Obsidian `.md` → Velite (Zod 스키마로 frontmatter 검증) |
+| Markdown 확장 | 글 간 링크용 wikilink 플러그인(`remark-wiki-link-plus` 계열), `rehype-callouts` |
+| 스타일 | Tailwind CSS + `@tailwindcss/typography` |
+| 코드 하이라이트 | `rehype-pretty-code` (shiki) |
+| 검색 | Pagefind |
+| SEO | sitemap, 글별 OG 이미지 (RSS는 만들지 않는다) |
+| 통계 | Cloudflare Web Analytics |
+| 호스팅/배포 | Cloudflare Pages + GitHub Actions, 기존 도메인 사용 |
+| 다크 모드 | 지원 필수 |
+
+### 정적 export 제약
+
+서버 런타임이 없다. 아래는 쓰지 않는다.
+
+- Route Handler, middleware, ISR, Server Actions, cookies/headers
+- `next/image`의 기본 최적화 로더 (아래 "이미지" 참고)
+- 동적 라우트는 모두 `generateStaticParams`로 빌드 시점에 확정한다.
+
+## 3. 콘텐츠 규칙 (확정)
+
+### 저장소와 발행
+
+- 이 저장소에는 블로그 코드와 `content/`만 둔다. 작성 중인 글은 다른 폴더(메인 vault)에 두고, 완성되면 이 저장소로 옮긴다.
+- **폴더 기반 발행**: `content/` 안에 있는 글은 전부 발행된다. `published` 같은 플래그는 쓰지 않는다.
+
+### 폴더 구조
+
+```
+content/
+  posts/
+    2026/
+      content-pipeline/
+        index.md
+        cover.png        # 이미지는 글 옆에 둔다
+```
+
+### 이름과 URL
+
+- 폴더/파일 이름(= slug)은 **영문 kebab-case**.
+- slug는 연도와 관계없이 **전체에서 유일**해야 한다. wikilink 해석이 이름 기준이기 때문이다. 중복되면 빌드를 실패시킨다.
+- URL은 `/2026/<slug>`. **trailing slash 없음** (`trailingSlash: false`). canonical, sitemap, OG의 URL도 모두 슬래시 없이 통일한다.
+- 연도는 **폴더 경로**에서 가져온다. frontmatter `date`의 연도와 다르면 빌드를 실패시킨다.
+
+### frontmatter
+
+```md
+---
+title: 블로그 만들기 #2
+date: 2026-09-27
+category: dev            # 영문 kebab-case slug
+series: blog-build       # 선택
+seriesOrder: 2           # 선택
+---
+```
+
+- Zod 스키마(Velite)로 검증한다. 필수: `title`, `date`, `category`.
+- **카테고리만 쓴다. 태그는 없다.**
+- 카테고리는 글에 적힌 값을 빌드 시점에 모아 **동적으로 생성**한다 (고정 enum 없음).
+  - 화면에 보일 한글 이름은 `slug → 이름` 매핑 객체로 따로 둔다.
+  - 매핑에 없는 slug가 나오면 **빌드를 실패시키지 말고 경고만** 띄운다 (오타 방지용).
+- **시리즈**는 frontmatter의 `series` + `seriesOrder`로만 만든다. 글 안에 목차 링크를 손으로 쓰지 않는다. 시리즈 목차와 이전/다음 글은 컴포넌트가 자동 생성한다.
+- 시리즈 표시 이름은 `series slug → 이름` 매핑으로 둔다.
+
+## 4. Markdown / Obsidian 처리 (확정)
+
+- Obsidian 설정을 맞춘다: **Use [[Wikilinks]] 끄기**(이미지는 표준 `![](path)`), 새 첨부파일 위치는 "현재 파일과 같은 폴더".
+  - 이유: `![[image]]` 임베드는 파일명에 밑줄이 있으면 깨지는 사례가 있고, 표준 문법이면 별도 플러그인이 필요 없다.
+- 글 사이 링크(`[[글-파일명]]`)만 wikilink로 처리한다. 파일명 → `/연도/slug`로 변환하고, **존재하지 않는 링크는 빌드를 실패**시킨다.
+- 콜아웃(`> [!note]`)은 `rehype-callouts`로 렌더링한다.
+- 수식(KaTeX)과 Mermaid는 쓰지 않는다.
+- 노트 임베드(transclusion), 블록 참조 등 Obsidian 고급 문법은 지원하지 않는다.
+
+## 5. 이미지
+
+- `next/image` 기본 최적화는 정적 export에서 동작하지 않으므로 **`images.unoptimized: true`로 간다 (확정)**. 빌드 시점 `sharp` 변환 파이프라인은 만들지 않는다.
+  - 이유: 디자인 에셋(히어로, 글 배경 숲)은 질감을 눈으로 확인하며 손으로 WebP로 만든 파일이라 자동 재압축하면 안 된다. 모바일용 파일(`forest-mobile.webp`)도 따로 있다. 글 안 이미지는 글당 몇 장 수준이라 작성자가 옮길 때 WebP로 내보내면 충분하다.
+  - 글 이미지가 많아지거나 용량 문제가 반복되면 다시 검토한다. Markdown 쪽 문법(`![](./cover.png)`)은 그대로라서 나중에 변환을 붙여도 글을 고칠 필요가 없다.
+- 일러스트 원본은 **투명 배경 PNG**. 라이트/다크 모드가 같은 파일을 쓴다 (다크용 별도 파일 없음).
+- 압축할 때 가루 알갱이 질감이 뭉개지지 않는지 눈으로 확인한다 (품질값을 높게).
+- 상대경로 이미지를 빌드 결과물로 복사하는 방식은 Velite 문서를 확인해서 정한다 (아래 "확인 필요").
+
+## 6. 디자인 시스템 (확정)
+
+### 색 토큰
+
+| 토큰 | 라이트 | 다크 | 용도 |
+| --- | --- | --- | --- |
+| `--paper` | `#FDFCFA` | `#16120E` | 배경 |
+| `--ink` | `#231C16` | `#EFE7DC` | 본문 글자 |
+| `--accent` | `#F28C1A` | `#F6A03D` | 장식(구분선, 브러시, 밑줄). **글자색으로 쓰지 않는다** (명도 대비 부족) |
+| `--accent-text` | `#B8520A` | `#FFB45A` | 링크 등 글자에 쓰는 주황 |
+| `--muted` | `#6A6E62` | `#A9A193` | 보조 텍스트 |
+| `--line` | `#DAD9D1` | `#3A342C` | 얇은 선 |
+| `--field` | `#F3F0EA` | `#211B16` | 코드 블록, 시리즈 박스 배경 |
+
+- 테마는 CSS 변수 + `data-theme` 속성으로 전환한다. 기본값은 `prefers-color-scheme`, 사용자 선택은 `localStorage`(try/catch)에 저장한다. 첫 렌더에서 깜빡이지 않게 한다 (`next-themes` 또는 `<head>` 인라인 스크립트).
+- 다크 모드의 히어로 하늘(노을빛):
+  `linear-gradient(to bottom, #16120E 0%, #2A1E2E 12%, #603A32 40%, #965C34 62%, #5C381E 84%, #16120E 100%)`
+  - 이유: 다크 배경에서는 나무 기둥이 묻히고 멀리 있는 안개 나무가 하얗게 떠서, 하늘색을 따로 깐다. 글 안의 숲 그림(figure)에도 같은 하늘을 깐다.
+
+### 타이포그래피
+
+- **디스플레이 폰트: 그리운 예은체 (Griun Yeeun)**. 블로그 이름, 큰 제목, 글 제목, 소제목, 목차의 연도와 글 제목에만 쓴다. 본문에는 쓰지 않는다.
+  - 이 폰트에는 `·`, `—`, `←` 글리프가 없다. 디스플레이 텍스트에서는 피하고, 있어도 본문 폰트로 대체되게 폰트 스택을 구성한다.
+  - **라이선스 문구**: 파일 수정에는 저작권자의 사전 허가가 필요하다. **서브셋 생성, 포맷 변환(woff2 등)을 하지 않고 원본 TTF를 그대로 셀프 호스팅**한다. 웹폰트/상업적 사용 가능 여부는 확인 전까지 미확인이다.
+- **본문 폰트**: 임시로 Gowun Dodum. `--font-body` 토큰으로 분리해서 나중에 교체 가능하게 한다.
+- 한글 줄바꿈: `word-break: keep-all; overflow-wrap: break-word;`
+- 글 본문(prose): 폭 최대 약 700px, 17.5px / line-height 1.95. 일반 UI는 17px / 1.8.
+
+### 레이아웃
+
+**홈**
+1. 히어로 일러스트가 **페이지 맨 위**에 온다. 나무 기둥이 화면 위쪽 밖으로 이어져 보여야 한다 (원본 이미지의 윗부분이 잘려 있다).
+2. 헤더는 히어로 위에 겹친다. 다크 모드 토글만 오른쪽 위에 보이고, 기둥에 걸려도 읽히게 반투명 배경을 깐다.
+3. 블로그 이름과 소개 문구는 히어로 **아래, 가운데 정렬**.
+4. 브러시 구분선 → 카테고리 칩(전체 + 동적 카테고리, 글 수 표시) → **연도별 목차**.
+   - 카드 UI는 쓰지 않는다. 연도는 URL 구조(`/2026/...`)와 맞춘다.
+   - 행: 날짜 | 제목(디스플레이 폰트) | 카테고리. 연도 제목은 왼쪽 열.
+
+**글 페이지**
+- "← 목록으로", 메타(카테고리 · 날짜 · 읽는 시간), 제목, 시리즈 박스(시리즈 글일 때만), 본문, 브러시 구분선, 이전/다음 글.
+- 이전/다음은 시리즈 글이면 시리즈 순서, 아니면 날짜 순서.
+- 헤더는 일반(겹치지 않는) 형태로 돌아오고 블로그 이름 링크가 보인다.
+- 글 페이지에서는 일렁임 같은 상시 움직임을 쓰지 않는다. 읽는 데 방해되면 안 된다.
+
+## 7. 인터랙션 (확정)
+
+움직임은 **홈의 일러스트 한 곳**에 몰아서 쓴다. 나머지는 조용하게 둔다.
+
+### 히어로 구현
+
+- 인라인 SVG 하나에 숲 이미지와 캐릭터 이미지를 넣는다. 일렁임 필터를 HTML `<img>`의 CSS `filter`가 아니라 **SVG `<image>`에 걸어서** 브라우저 차이(특히 Safari)를 줄인다.
+- 컨테이너 `max-width: 1280px`, `preserveAspectRatio="xMidYMax meet"`.
+- 데스크톱 `viewBox="0 0 1920 1010"`. 모바일(≤640px)은 가운데로 좁혀 `viewBox="380 0 1160 980"`.
+- 숲 이미지: 1920×1076을 `(0, 0)`에. 캐릭터: 620×620을 `(650, 389)`에 (길 한가운데에 앉은 모습).
+- 하늘 배경(다크 모드)은 SVG 안이 아니라 히어로 컨테이너의 CSS 배경으로 깐다 (좌우가 잘려 보이지 않게).
+
+### 일렁임 (캐릭터에만 적용, 확정 값)
+
+사용자가 테스트 페이지에서 직접 고른 값이다. 표시 폭 557px 기준:
+
+```
+baseFrequency="0.008 0.010"
+numOctaves="4"
+scale="4.5"            (폭의 약 0.81%)
+방식: 손그림 떨림(seed 스텝) 9fps
+필터 갱신 상한 15fps
+```
+
+- `feTurbulence`의 `seed`를 1~24 사이에서 순환하며 바꾼다 (`Math.floor(t / 1000 * 9) % 24 + 1`).
+- 표시 크기가 달라지면 비율을 유지한다. `baseFrequency`는 폭에 **반비례**, `scale`은 폭에 **비례**.
+  - 환산식: `scale = 0.0081 × 폭`, `baseFrequency = (4.46, 5.57) / 폭`
+  - 히어로 SVG(캐릭터 폭 620 viewBox 단위)에서는 `baseFrequency="0.00719 0.00898"`, `scale≈5`.
+- `color-interpolation-filters="sRGB"`를 지정한다.
+- 히어로가 화면 밖이거나 탭이 숨겨지면 루프를 멈춘다 (`IntersectionObserver`, `visibilitychange`).
+
+### 붓 등장 효과 (첫 진입 시 한 번)
+
+- 숲 이미지에 SVG `<mask>`를 걸고, 굵은 흰색 스트로크 여러 줄을 `stroke-dashoffset`으로 그려서 붓질처럼 드러낸다. 스트로크 가장자리는 `feTurbulence + feDisplacementMap` 필터로 거칠게 만든다. 숲이 끝나면 캐릭터가 같은 방식으로 나타난다.
+- 끝나면 마스크를 제거한다. 안전장치로 일정 시간(7초) 뒤에는 어떤 경우에도 그림이 보이게 마스크를 제거한다.
+- 구분선은 스크롤로 화면에 들어오면 붓으로 그어지듯 나타난다 (`IntersectionObserver`, 한 번만).
+
+### 접근성
+
+- `prefers-reduced-motion: reduce`이면 붓 등장, 일렁임, 구분선 애니메이션을 모두 끄고 **정지 상태로 보여준다** (일렁임 필터도 제거해서 원본 그림을 그대로 보여준다).
+- 키보드 포커스가 보여야 한다 (`:focus-visible`).
+- 이미지에는 의미 있는 `alt`를 넣고, 장식용 SVG는 `aria-hidden`.
+
+## 8. 하지 않는 것
+
+- 댓글 (giscus 포함), 로그인/인증, DB, KV, 서버 기능
+- 태그, RSS, 수식, Mermaid
+- Notion 연동, Notion 글 마이그레이션
+- 글 페이지의 상시 애니메이션
+
+## 9. 확인이 필요한 항목 (추측으로 구현하지 말 것)
+
+공식 문서/실제 동작으로 확인한 뒤 구현한다.
+
+- **Velite**: 스키마 API(`s.isodate()`, `s.markdown()` 등)가 현재 버전과 맞는지, 글 안 상대경로 이미지를 결과물로 복사하는 옵션.
+- **wikilink 플러그인**: 선택한 플러그인의 유지보수 상태, Velite 파이프라인과의 호환성.
+- **OG 이미지**: `output: 'export'`에서 `ImageResponse`(satori)로 글별 OG 이미지를 만들 수 있는지. satori는 TTF/OTF/WOFF만 받고 WOFF2는 안 받는 걸로 알고 있다. 한글 폰트는 원본 TTF를 쓰며, 라이선스상 변환하지 않는다.
+- **Cloudflare Pages**: 정적 export로 만든 `my-post.html`이 확장자 없는 `/2026/my-post`로 서빙되는지.
+- **Safari/모바일**: SVG 필터(일렁임, 붓 마스크)의 성능과 렌더링. 저사양 모바일에서 첫 1~2초가 무거울 수 있다.
+- **폰트 라이선스**: 그리운 예은체의 웹폰트 임베드와 상업적 사용 가능 여부 (griun.co.kr).
+
+## 10. 아직 정하지 않은 것
+
+- 블로그 최종 이름과 소개 문구
+- 본문 폰트 최종 선택
+- OG 이미지 디자인
+- 패키지 매니저, 린트/포맷 설정, `package.json` 스크립트 (정해지면 이 문서에 추가)
+
+## 11. 레퍼런스와 에셋
+
+### 디자인 프로토타입
+
+레이아웃과 인터랙션의 기준 구현이다 (홈 + 글 페이지, 라이트/다크, 히어로 붓 등장과 일렁임 포함). 아래 4개 파일을 **같은 폴더**에 두고 브라우저로 연다.
+
+| 파일 | 설명 |
+| --- | --- |
+| `blog-prototype.html` | 코드만 들어 있는 단일 HTML (약 28KB) |
+| `forest.webp` | 숲길 배경 일러스트 (투명, 1920×1076) |
+| `character.webp` | 캐릭터 일러스트 (투명, 1024×1024) |
+| `Griun_Yeeun-Rg.ttf` | 그리운 예은체 원본 (수정하지 않은 파일) |
+
+- HTML은 이 파일들을 상대경로(`./forest.webp`, `./character.webp`, `./Griun_Yeeun-Rg.ttf`)로 불러온다. 이름을 바꾸면 `<style>`의 `@font-face`와 `<script>` 맨 위의 `FOREST`, `CHAR` 상수도 함께 고친다.
+- 파일을 더블클릭해서 열었을 때 폰트나 이미지가 안 뜨면 브라우저의 로컬 파일 제한 때문일 수 있다. 그 폴더에서 `npx serve` 같은 로컬 서버로 연다.
+- 프로토타입은 참고용이다. 실제 구현은 Next 컴포넌트로 옮기고, 데이터(글 목록, 카테고리, 시리즈)는 Velite 결과로 대체한다. 프로토타입 안의 샘플 글 제목과 문구는 모두 임시다.
+- 저장소 안에 둘 위치(예: `docs/prototype/`)는 미정이다.
+
+### 에셋
+
+- 캐릭터 일러스트: 투명 PNG 원본 (1024×1024)
+- 숲길 배경 일러스트: 투명 PNG 원본 (1920×1076). 윗부분이 잘려 있는 것이 정상이다.
+- 위 두 원본을 프로토타입용으로 WebP(알파 유지)로 변환한 것이 `forest.webp`, `character.webp`다. 실제 사이트에서 어떤 포맷을 쓸지는 "5. 이미지"의 결정을 따른다.
+- 그리운 예은체 TTF 원본 (라이선스 주의는 "6. 디자인 시스템"의 타이포그래피 참고)
+- 에셋을 저장소 어디에 둘지는 미정이다.
+
+## 12. 작업 방식
+
+- 사용자와는 **한국어**로 소통한다.
+- 작성자는 React/Next.js와 TypeScript에 익숙하다 (중급). 과한 추상화는 피하고, 의도가 바로 안 읽히는 코드에는 짧은 주석을 단다.
+- 라이브러리 API는 기억에 의존하지 말고 문서나 타입 정의로 확인한다.
+- 결정되지 않은 사항을 임의로 확정하지 않는다. 필요하면 먼저 묻는다.
+- TypeScript는 `strict`를 켠다.
