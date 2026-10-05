@@ -20,7 +20,7 @@
 | 스타일 | Tailwind CSS + `@tailwindcss/typography` |
 | 코드 하이라이트 | `rehype-pretty-code` (shiki) |
 | SEO | sitemap, 글별 OG 이미지 (RSS는 만들지 않는다) |
-| 통계 | Cloudflare Web Analytics |
+| 통계 | Cloudflare Web Analytics (Pages 자동 설정, 코드에 스크립트를 넣지 않는다. 아래 "통계" 참고) |
 | 호스팅/배포 | Cloudflare Pages + GitHub Actions, 기존 도메인 `https://mina.house` (`site.config.ts`의 `site.url`) |
 | 다크 모드 | 지원 필수 |
 | 아이콘 | `lucide-react`. SVG를 직접 써 넣지 않는다. 예외: lucide 1.x에 없는 브랜드 로고(GitHub)만 직접 그린다 |
@@ -192,6 +192,14 @@ seriesOrder: 2           # 선택
   - 받는 쪽 테마를 모르므로 라이트 색만 쓴다. X(트위터)는 `summary_large_image` 카드.
   - `opengraph-image` 파일 규칙 대신 `og.png/route.tsx` 라우트 핸들러를 쓴다. 파일 규칙은 확장자 없는 파일(`opengraph-image`)을 만들어서 호스팅에 따라 `image/png`로 서빙되지 않을 수 있기 때문이다. 정적 export에서는 라우트에 `dynamic = "force-static"`이 필요하다.
   - satori는 woff2와 webp를 읽지 못해서 `assets/`에 따로 둔다: 고운 바탕 Bold 원본 TTF(`assets/fonts/`, OFL, 라이선스 파일 포함, 8MB라 Bold만), 배경 JPEG(`assets/og/`, 한 번 변환해 커밋한 파일. 빌드 파이프라인이 아니다).
+
+### 통계
+
+- **Cloudflare Web Analytics 자동 설정**을 쓴다. Cloudflare 대시보드의 Pages 프로젝트에서 Web Analytics를 켜면 다음 배포부터 Cloudflare가 비콘 스크립트를 자동으로 끼워 넣는다. 그래서 코드에는 스크립트를 넣지 않는다.
+  - **수동 스크립트(`beacon.min.js` + 토큰)와 같이 쓰지 않는다.** 페이지마다 스크립트는 하나만 있어야 한다 (중복 집계).
+  - 조건: `mina.house` 트래픽이 Cloudflare 프록시를 거쳐야 한다(주황 구름). DNS만 쓰는 CNAME 설정에서는 자동 설정이 안 된다. 그 경우에는 수동 스크립트로 바꾸고, 개발 중에는 집계되지 않게 빌드 결과물에만 넣는다.
+  - 쿠키를 쓰지 않고 쿼리 문자열은 기록하지 않는다. 화면 전환만 일어나는 이동(홈 → 글)도 따로 집계된다.
+- **할 일**: 첫 배포 후 대시보드에서 Web Analytics를 켜고, 한 번 더 배포한 뒤 페이지 HTML에 비콘 스크립트가 들어갔는지 확인한다.
 
 ## 7. 인터랙션 (확정)
 
