@@ -19,7 +19,6 @@
 | Markdown 확장 | 글 간 링크용 자체 remark 플러그인(`lib/remark-wikilink.ts`), `rehype-callouts` |
 | 스타일 | Tailwind CSS + `@tailwindcss/typography` |
 | 코드 하이라이트 | `rehype-pretty-code` (shiki) |
-| 검색 | Pagefind |
 | SEO | sitemap, 글별 OG 이미지 (RSS는 만들지 않는다) |
 | 통계 | Cloudflare Web Analytics |
 | 호스팅/배포 | Cloudflare Pages + GitHub Actions, 기존 도메인 사용 |
@@ -251,6 +250,9 @@ scale="4.5"            (폭의 약 0.81%)
 - 본문 폰트 최종 선택
 - OG 이미지 디자인
 - 패키지 매니저, 린트/포맷 설정, `package.json` 스크립트 (정해지면 이 문서에 추가)
+- **검색 (나중에 검토)**: 처음엔 Pagefind로 확정했으나 지금은 넣지 않는다 (2026-10-06). 글이 적을 때는 카테고리 필터, 연도별 목차, "더 보기"로 충분하고, 검색창 UI를 그림책 분위기에 맞게 다시 꾸미는 비용이 크다.
+  - 다시 볼 시점: 글이 50개를 넘거나, 예전 글을 찾기 불편해질 때.
+  - 붙일 때는 Pagefind(빌드 결과물 `out/`을 읽어 색인을 만드는 정적 검색)를 우선 검토한다. 글/코드 구조를 바꿀 필요 없이 본문 영역에 `data-pagefind-body`만 달면 된다.
 
 ## 11. 레퍼런스와 에셋
 
