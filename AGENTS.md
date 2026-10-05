@@ -201,6 +201,15 @@ seriesOrder: 2           # 선택
   - 쿠키를 쓰지 않고 쿼리 문자열은 기록하지 않는다. 화면 전환만 일어나는 이동(홈 → 글)도 따로 집계된다.
 - **할 일**: 첫 배포 후 대시보드에서 Web Analytics를 켜고, 한 번 더 배포한 뒤 페이지 HTML에 비콘 스크립트가 들어갔는지 확인한다.
 
+### 배포
+
+- **GitHub Actions에서 빌드하고 Cloudflare Pages에 Direct Upload**로 올린다 (`.github/workflows/deploy.yml`). Cloudflare 쪽 Git 연동 빌드는 쓰지 않는다.
+  - `main`에 push → 프로덕션 배포 (`mina.house`). `dev`에 push → 미리보기 배포 (`dev.mina-house.pages.dev`).
+  - 단계: checkout → `pnpm/action-setup@v6`(pnpm 12 지원은 v6.1.0부터, 버전은 `packageManager`를 따름) → `actions/setup-node@v7`(Node 24) → `pnpm install --frozen-lockfile` → `pnpm build` → `cloudflare/wrangler-action@v4`로 `pages deploy out --project-name=mina-house --branch=<브랜치>`.
+  - 저장소 Secrets: `CLOUDFLARE_API_TOKEN`(권한: Account → Cloudflare Pages → Edit), `CLOUDFLARE_ACCOUNT_ID`.
+- Cloudflare Pages 프로젝트 이름은 `mina-house`, production branch는 `main`.
+- GitHub 저장소는 공개. 커밋 작성자 이메일(`yozumina@serafuku.moe`)이 커밋 기록에 공개되는 것은 알고 그대로 둔다.
+
 ## 7. 인터랙션 (확정)
 
 움직임은 **홈의 일러스트 한 곳**에 몰아서 쓴다. 나머지는 조용하게 둔다.

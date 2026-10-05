@@ -1,0 +1,45 @@
+# Cloudflare Pages 배포 (Direct Upload).
+# GitHub Actions에서 정적 사이트(out/)를 빌드하고 wrangler로 올린다.
+# - main에 push → 프로덕션 배포 (Pages 프로젝트의 production branch를 main으로 만든다)
+# - dev에 push → 미리보기 배포 (dev.<프로젝트>.pages.dev)
+# 필요한 저장소 Secrets: CLOUDFLARE_API_TOKEN (권한: Account → Cloudflare Pages → Edit), CLOUDFLARE_ACCOUNT_ID
+name: Deploy
+
+on:
+  push:
+    branches: [main, dev]
+
+# 같은 브랜치에 연달아 push하면 앞의 배포는 취소하고 마지막 것만 올린다
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      deployments: write
+    steps:
+      - uses: actions/checkout@v7
+
+      # pnpm 버전은 package.json의 packageManager를 따른다
+      - uses: pnpm/action-setup@v6 # pnpm 12 지원은 v6.1.0부터
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # velite --strict --clean && next build → out/
+      - run: pnpm build
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy out --project-name=mina-house --branch=${{ github.ref_name }}
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
