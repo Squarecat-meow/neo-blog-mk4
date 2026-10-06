@@ -23,7 +23,7 @@ export const profile: {
 } = {
   name: "정새론",
   bio: "<head>와 <body>로 이루어진 사람",
-  avatar: { src: "/character.webp", zoom: 2.6, position: "47% 20%" }, // 임시: 캐릭터 얼굴을 잘라 쓴다
+  avatar: { src: "/profile.jpg", zoom: 1, position: "50% 50%" },
   links: [
     {
       kind: "github",
