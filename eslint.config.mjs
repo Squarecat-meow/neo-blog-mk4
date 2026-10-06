@@ -12,6 +12,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // 글과 Obsidian vault 설정(.obsidian/plugins의 빌드된 플러그인 코드 포함). 코드가 아니라 검사하지 않는다
+    "content/**",
+    // Velite 생성물
+    ".velite/**",
   ]),
 ]);
 
