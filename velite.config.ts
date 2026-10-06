@@ -61,13 +61,16 @@ const excerpt = () =>
 
 // YAML에서 공백 뒤의 #은 주석이라, `title: 블로그 만들기 #2`는 "블로그 만들기"로 조용히 잘린다.
 // 따옴표 없이 " #"이 들어간 frontmatter 줄을 찾아낸다.
-const UNQUOTED_HASH = /^(\w+):\s+(?!["'])[^\n]*\s#/gm;
+// \s는 줄바꿈까지 포함해서 다음 줄의 # 주석을 잘못 잡으므로 공백/탭([ \t])만 본다
+const UNQUOTED_HASH = /^(\w+):[ \t]+(?!["'])[^\n]*[ \t]#/gm;
 const FRONTMATTER = /^---\r?\n([\s\S]*?)\r?\n---/;
 
 const posts = defineCollection({
   name: "Post",
-  // content/posts/<연도>/<slug>/index.md 구조만 글로 인정한다
-  pattern: "posts/*/*/index.md",
+  // content/posts/<연도>/<slug>/<slug>.md 구조만 글로 인정한다.
+  // 파일 이름을 폴더 이름과 같게 하는 이유: Obsidian은 [[slug]] 링크를 파일 이름으로 찾고, 이 블로그는 폴더 이름으로 찾는다.
+  // 둘을 같게 두면 Obsidian(Folder notes 플러그인, 이름 {{folder_name}})과 사이트에서 같은 글을 가리킨다
+  pattern: "posts/*/*/*.md",
   schema: s
     .object({
       title: s.string(),
@@ -77,13 +80,17 @@ const posts = defineCollection({
       series: s.string().regex(kebab, "series는 영문 kebab-case여야 한다").optional(),
       seriesOrder: s.number().int().positive().optional(),
       // 파일 위치에서 계산되는 값들 (frontmatter에 적지 않는다)
-      path: s.path(), // "posts/2026/content-pipeline"
+      path: s.path({ removeIndex: false }), // "posts/2026/content-pipeline/content-pipeline"
       readingTime: readingTime(),
       excerpt: excerpt(),
       content: s.markdown(),
     })
     .transform(({ path, excerpt, ...data }, { addIssue, meta }) => {
-      const [, year, slug] = path.split("/");
+      const [, year, slug, fileName] = path.split("/");
+
+      if (fileName !== slug) {
+        addIssue({ fatal: true, code: "custom", message: `파일 이름은 폴더 이름과 같아야 한다: ${slug}/${slug}.md (지금은 ${fileName}.md)` });
+      }
 
       const frontmatter = String(meta.value).match(FRONTMATTER)?.[1] ?? "";
       for (const [, key] of frontmatter.matchAll(UNQUOTED_HASH)) {

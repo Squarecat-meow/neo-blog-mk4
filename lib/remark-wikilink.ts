@@ -21,7 +21,7 @@ const WIKILINK = /(!?)\[\[([^[\]|#]+)(?:#([^[\]|]+))?(?:\|([^[\]]+))?\]\]/g;
 
 const FRONTMATTER = /^---\r?\n([\s\S]*?)\r?\n---/;
 
-// content/posts/<연도>/<slug>/index.md 를 훑어 slug → { url, title } 맵을 만든다.
+// content/posts/<연도>/<slug>/<slug>.md 를 훑어 slug → { url, title } 맵을 만든다.
 // dev 모드에서 새 글이나 바뀐 제목이 바로 반영되도록 파일마다 새로 읽는다 (글 수가 적어서 충분히 가볍다).
 export function readPosts(postsDir: string) {
   const posts = new Map<string, PostRef>();
@@ -33,11 +33,11 @@ export function readPosts(postsDir: string) {
     for (const slug of dirs(join(postsDir, year))) {
       let title = slug;
       try {
-        const source = readFileSync(join(postsDir, year, slug, "index.md"), "utf8");
+        const source = readFileSync(join(postsDir, year, slug, `${slug}.md`), "utf8");
         const frontmatter = parseYaml(source.match(FRONTMATTER)?.[1] ?? "");
         if (typeof frontmatter?.title === "string") title = frontmatter.title;
       } catch {
-        // index.md가 없거나 frontmatter가 깨진 글은 스키마 검증에서 따로 걸린다. 여기서는 slug로 대신한다
+        // <slug>.md가 없거나 frontmatter가 깨진 글은 스키마 검증에서 따로 걸린다. 여기서는 slug로 대신한다
       }
       posts.set(slug, { url: `/${year}/${slug}`, title });
     }

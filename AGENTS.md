@@ -43,13 +43,20 @@
 ### 폴더 구조
 
 ```
-content/
+content/                       # Obsidian vault로 연다
+  about.md                     # 소개 페이지
   posts/
     2026/
       content-pipeline/
-        index.md
-        cover.png        # 이미지는 글 옆에 둔다
+        content-pipeline.md    # 파일 이름 = 폴더 이름 (= slug)
+        cover.png              # 이미지는 글 옆에 둔다
 ```
+
+- 글 파일 이름은 **폴더 이름과 같다** (`<slug>/<slug>.md`). 다르면(예전 방식 `index.md` 포함) 빌드를 실패시킨다.
+  - 이유: Obsidian은 `[[slug]]` 링크를 파일 이름으로 찾고, 이 블로그의 wikilink 플러그인은 폴더 이름으로 찾는다. 둘을 같게 두면 Obsidian 안에서도 링크가 그 글로 연결되고, 이름을 바꿀 때 Obsidian이 링크를 자동으로 고쳐 준다. 처음엔 `index.md`였으나 2026-10-06에 바꿨다.
+- Velite는 이름이 `_`로 시작하는 파일/폴더를 건너뛴다 (`content/_drafts/`, `posts/2026/_my-draft/` 등은 빌드에 들어가지 않는다).
+- **초안은 `content/_drafts/`에 쓴다.** 빌드에서 빠지고 `.gitignore`로 커밋도 되지 않아 이 컴퓨터에만 남는다. 완성되면 `content/posts/<연도>/<slug>/`로 옮긴다 (Obsidian 안에서 옮기면 링크도 고쳐진다). `content/posts/`에 있는 글은 push하는 순간 공개된다 (저장소와 미리보기 주소가 모두 공개).
+- **글 템플릿**: `content/_templates/post.md` (Obsidian 기본 "템플릿" 플러그인의 템플릿 폴더를 `_templates`로 지정해서 쓴다). frontmatter 설명은 줄 끝 주석이 아니라 **줄 전체 주석**으로 쓴다. 줄 끝 `#`은 따옴표 없는 ` #` 검사에 걸린다.
 
 ### 이름과 URL
 
@@ -85,6 +92,8 @@ seriesOrder: 2           # 선택
 
 ## 4. Markdown / Obsidian 처리 (확정)
 
+- **`content/`를 Obsidian vault로 연다.** 상태 파일(`.obsidian/workspace*.json`)과 휴지통(`.trash/`)은 `.gitignore`로 뺀다. 나머지 `.obsidian/` 설정은 커밋해서 다른 컴퓨터에서도 같은 설정을 쓴다.
+- **Folder notes 플러그인**(LostPaul): 폴더 노트 이름 `{{folder_name}}`, 위치는 폴더 안. 폴더를 누르면 `<slug>/<slug>.md`가 열린다. 이 플러그인은 링크를 바꿔 주지 않는다 (링크가 맞는 건 파일 이름 = 폴더 이름 규칙 덕분이다).
 - Obsidian 설정을 맞춘다: **Use [[Wikilinks]] 끄기**(이미지는 표준 `![](path)`), 새 첨부파일 위치는 "현재 파일과 같은 폴더".
   - 이유: `![[image]]` 임베드는 파일명에 밑줄이 있으면 깨지는 사례가 있고, 표준 문법이면 별도 플러그인이 필요 없다.
 - 글 사이 링크(`[[slug]]`, `[[slug|텍스트]]`, `[[slug#제목]]`)만 wikilink로 처리한다. slug → `/연도/slug`로 변환한다.

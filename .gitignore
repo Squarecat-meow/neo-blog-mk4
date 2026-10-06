@@ -43,3 +43,9 @@ next-env.d.ts
 # velite
 /.velite/
 /public/static/
+
+# Obsidian (content/를 vault로 연다). 창 배치·최근 파일 등 자주 바뀌는 상태 파일과 휴지통은 커밋하지 않는다
+/content/.obsidian/workspace*.json
+/content/.trash/
+# 초안: content/_drafts/에 쓴 글은 빌드에서 빠지고(_로 시작), 커밋도 하지 않는다
+/content/_drafts/
