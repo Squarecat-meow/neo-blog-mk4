@@ -28,6 +28,8 @@ export const metadata: Metadata = {
   openGraph: { ...siteOpenGraph, url: "/", title: site.name, description: site.description },
   // X(트위터) 등에서 큰 이미지 카드로 보이게 한다. 이미지는 og:image를 쓴다
   twitter: { card: "summary_large_image" },
+  // 파비콘과 iOS 홈 화면 아이콘 (public/favicon.png)
+  icons: { icon: "/favicon.png", apple: "/favicon.png" },
 };
 
 // 사용자가 고른 테마가 있으면 첫 페인트 전에 적용한다 (없으면 CSS가 OS 설정을 따른다)
