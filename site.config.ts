@@ -37,6 +37,8 @@ export const profile: {
 // 카테고리 slug → 화면 표시 이름. 여기에 없는 slug가 글에 나오면 빌드 때 경고만 띄운다.
 export const categoryNames: Record<string, string> = {
   dev: "개발",
+  life: "일상",
+  hobby: "취미",
 };
 
 // 시리즈 slug → 화면 표시 이름
