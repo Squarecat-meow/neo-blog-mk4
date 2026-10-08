@@ -104,6 +104,11 @@ seriesOrder: 2           # 선택
   - 외부 플러그인 대신 직접 만든 이유: `remark-wiki-link-plus`(마지막 릴리스 2022)는 Velite의 unified 11에서 실행되지 않고, 후속인 `@flowershow/remark-wiki-link`는 npm 최신판(4.0.0)이 빌드 결과물 없이 배포되는 등 관리 상태가 불안하다 (2026-10 확인).
 - 콜아웃(`> [!note]`)은 `rehype-callouts`로 렌더링한다. 스타일은 플러그인 내장 테마 대신 디자인 토큰으로 직접 입힌다.
 - 코드 블록은 `rehype-pretty-code`로 라이트/다크 색을 CSS 변수(`--shiki-light`, `--shiki-dark`)로 넣고 전환은 CSS에서 한다. 배경은 `--field`를 쓴다 (`keepBackground: false`). 코드 테마(`github-light`/`github-dark`)는 임시.
+- **유튜브**: Obsidian 방식 `![제목](유튜브 주소)`를 영상 iframe으로 바꾼다 (`lib/remark-youtube.ts`, `remarkImage`보다 먼저 돈다). 그냥 두면 영상 주소가 `<img>`로 들어가 깨진다.
+  - `watch?v=`, `youtu.be/`, `shorts/`, `embed/` 주소와 시작 시간(`t=90`, `t=1m30s`)을 알아본다. 대괄호 안 글자는 iframe `title`(없으면 "YouTube 동영상").
+  - `youtube-nocookie.com`으로 넣고(재생 전에는 쿠키 없음), `loading="lazy"`, `referrerpolicy="strict-origin-when-cross-origin"`(리퍼러가 없으면 유튜브가 재생을 막는 경우가 있다).
+  - 유튜브 퍼가기 코드(`<iframe>`)를 직접 붙여넣어도 된다. Markdown 안의 HTML은 그대로 통과한다.
+  - 모양: 본문의 모든 iframe은 칸 폭에 맞추고 16:9 (`.post-prose iframe`). 퍼가기 코드의 `width="560" height="315"` 고정 크기 때문에 좁은 화면에서 넘쳤고, Tailwind 기본 스타일은 `img`/`video`에만 `max-width: 100%`를 건다. 쇼츠는 9:16, 최대 폭 340px로 가운데.
 - 수식(KaTeX)과 Mermaid는 쓰지 않는다.
 - 노트 임베드(transclusion), 블록 참조 등 Obsidian 고급 문법은 지원하지 않는다.
 - 각주(`[^1]`)는 거의 쓰지 않을 것 같아 따로 처리하지 않는다 (GFM 기본 동작 그대로). 처음 쓰게 되면 아래를 먼저 처리한다.

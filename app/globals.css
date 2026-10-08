@@ -443,6 +443,24 @@ body {
 .post-prose img {
   border-radius: 14px;
 }
+/* 영상(iframe): 유튜브 퍼가기 코드는 width="560" height="315"로 크기를 고정해서 좁은 화면에서 칸 밖으로 넘친다.
+   Tailwind 기본 스타일은 img/video에만 max-width: 100%를 건다. CSS는 HTML 속성보다 우선하므로
+   퍼가기 코드를 그대로 붙여넣어도 칸 폭에 맞추고 높이는 16:9 비율로 정한다 */
+.post-prose iframe {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  margin: 1.6em 0;
+  border: 0;
+  border-radius: 14px;
+}
+/* 쇼츠는 세로 영상이라 9:16, 너무 커지지 않게 폭을 줄여 가운데에 둔다 (lib/remark-youtube.ts) */
+.post-prose iframe.youtube-shorts {
+  aspect-ratio: 9 / 16;
+  max-width: 340px;
+  margin-inline: auto;
+}
 
 /* 인라인 코드: 플러그인이 붙이는 백틱(`)을 없애고 --field 배경을 깐다 */
 .post-prose :not(pre) > code {

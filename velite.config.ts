@@ -11,6 +11,7 @@ import {
 } from "velite";
 import { decodeImageSrc, encodeImageSrc } from "./lib/rehype-image-src";
 import remarkImage from "./lib/remark-image";
+import remarkYoutube from "./lib/remark-youtube";
 import remarkWikilink, { readPosts, resolveWikilinkText } from "./lib/remark-wikilink";
 import { categoryNames, seriesNames } from "./site.config";
 
@@ -138,7 +139,8 @@ export default defineConfig({
   output: { data: ".velite", ...assetOutput },
   collections: { posts, about },
   markdown: {
-    remarkPlugins: [[remarkWikilink, { postsDir: POSTS_DIR }], remarkImage],
+    // remarkYoutube는 remarkImage보다 먼저 (영상 주소를 이미지로 처리하기 전에 iframe으로 바꾼다)
+    remarkPlugins: [[remarkWikilink, { postsDir: POSTS_DIR }], remarkYoutube, remarkImage],
     // velite 기본 이미지 복사는 사용자 플러그인보다 먼저 돌아서 %20 경로를 고칠 틈이 없다.
     // 그래서 끄고, 경로 디코딩 → 복사 순서로 직접 넣는다.
     copyLinkedFiles: false,
