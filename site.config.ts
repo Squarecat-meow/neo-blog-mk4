@@ -1,4 +1,7 @@
-// 블로그 전역 설정. 이름, 소개 문구, 카테고리/시리즈 표시 이름은 여기서만 관리한다.
+import categories from "./content/_config/categories.json";
+import series from "./content/_config/series.json";
+
+// 블로그 전역 설정. 이름, 소개 문구, 프로필은 여기서 관리한다 (카테고리/시리즈 이름은 아래 참고)
 export const site = {
   name: "새론이의 사계절",
   description: "새론이가 사계절을 보내는 방법",
@@ -34,14 +37,8 @@ export const profile: {
   ],
 };
 
-// 카테고리 slug → 화면 표시 이름. 여기에 없는 slug가 글에 나오면 빌드 때 경고만 띄운다.
-export const categoryNames: Record<string, string> = {
-  dev: "개발",
-  life: "일상",
-  hobby: "취미",
-};
-
-// 시리즈 slug → 화면 표시 이름
-export const seriesNames: Record<string, string> = {
-  "blog-build": "블로그 만들기",
-};
+// 카테고리와 시리즈의 slug → 화면 표시 이름은 Obsidian vault 안의 JSON 파일에서 관리한다.
+// Obsidian 글 템플릿(content/_templates/post.md)도 같은 파일을 읽어 목록에서 고르게 하므로, 목록이 한 곳에만 있다.
+// 이름이 _로 시작하는 폴더라 글로 빌드되지 않는다. 여기에 없는 slug가 글에 나오면 빌드 때 경고만 띄운다.
+export const categoryNames: Record<string, string> = categories;
+export const seriesNames: Record<string, string> = series;

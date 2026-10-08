@@ -56,7 +56,10 @@ content/                       # Obsidian vault로 연다
   - 이유: Obsidian은 `[[slug]]` 링크를 파일 이름으로 찾고, 이 블로그의 wikilink 플러그인은 폴더 이름으로 찾는다. 둘을 같게 두면 Obsidian 안에서도 링크가 그 글로 연결되고, 이름을 바꿀 때 Obsidian이 링크를 자동으로 고쳐 준다. 처음엔 `index.md`였으나 2026-10-06에 바꿨다.
 - Velite는 이름이 `_`로 시작하는 파일/폴더를 건너뛴다 (`content/_drafts/`, `posts/2026/_my-draft/` 등은 빌드에 들어가지 않는다).
 - **초안은 `content/_drafts/`에 쓴다.** 빌드에서 빠지고 `.gitignore`로 커밋도 되지 않아 이 컴퓨터에만 남는다. 완성되면 `content/posts/<연도>/<slug>/`로 옮긴다 (Obsidian 안에서 옮기면 링크도 고쳐진다). `content/posts/`에 있는 글은 push하는 순간 공개된다 (저장소와 미리보기 주소가 모두 공개).
-- **글 템플릿**: `content/_templates/post.md` (Obsidian 기본 "템플릿" 플러그인의 템플릿 폴더를 `_templates`로 지정해서 쓴다). frontmatter 설명은 줄 끝 주석이 아니라 **줄 전체 주석**으로 쓴다. 줄 끝 `#`은 따옴표 없는 ` #` 검사에 걸린다.
+- **글 템플릿**: `content/_templates/post.md`, **Templater** 커뮤니티 플러그인으로 넣는다 (템플릿 폴더 `_templates`). 넣으면 카테고리와 시리즈를 한글 이름 목록에서 고르고(slug가 들어간다), 시리즈를 고르면 그 시리즈의 다음 순서 번호를 기본값으로 묻는다. 날짜는 오늘.
+  - 템플릿 파일에는 frontmatter를 직접 쓰지 않고 **스크립트(`<%* ... %>`)가 만들어 낸다.** 직접 쓰면 Obsidian 속성 편집기가 `{{date:...}}` 같은 값을 YAML로 잘못 읽어 파일을 망가뜨린다(실제로 한 번 망가졌다). Obsidian 기본 "템플릿" 플러그인은 목록 선택을 못 해서 쓰지 않는다.
+  - Templater의 여러 실행 블록 사이에 변수가 이어지는지는 문서에 명시돼 있지 않아서, 블록 하나에서 `tR`로 frontmatter 전체를 만든다.
+  - frontmatter에 직접 설명을 달 때는 줄 끝 주석이 아니라 **줄 전체 주석**으로 쓴다. 줄 끝 `#`은 따옴표 없는 ` #` 검사에 걸린다.
 
 ### 이름과 URL
 
@@ -83,12 +86,12 @@ seriesOrder: 2           # 선택
 - `description`(선택)은 meta description/OG에 쓴다. 없으면 본문 문단(소제목, 코드, 콜아웃 제외) 앞 150자를 어절 단위로 잘라 자동으로 만든다.
 - **카테고리만 쓴다. 태그는 없다.**
 - 카테고리는 글에 적힌 값을 빌드 시점에 모아 **동적으로 생성**한다 (고정 enum 없음).
-  - 화면에 보일 한글 이름은 `slug → 이름` 매핑 객체로 따로 둔다.
+  - 화면에 보일 한글 이름은 `slug → 이름` 매핑으로 **`content/_config/categories.json`**에 둔다. 사이트(`site.config.ts`가 import)와 Obsidian 글 템플릿이 같은 파일을 읽어서 목록이 한 곳에만 있다. 새 카테고리는 Obsidian에서 이 JSON에 한 줄 추가한다.
   - 매핑에 없는 slug가 나오면 **빌드를 실패시키지 말고 경고만** 띄운다 (오타 방지용).
 - **시리즈**는 frontmatter의 `series` + `seriesOrder`로만 만든다. 글 안에 목차 링크를 손으로 쓰지 않는다. 시리즈 목차와 이전/다음 글은 컴포넌트가 자동 생성한다.
-- 시리즈 표시 이름은 `series slug → 이름` 매핑으로 둔다. 카테고리처럼 매핑에 없으면 경고만 띄운다.
+- 시리즈 표시 이름은 `series slug → 이름` 매핑으로 **`content/_config/series.json`**에 둔다(카테고리와 같은 방식). 매핑에 없으면 경고만 띄운다.
 - `series`와 `seriesOrder`는 함께 쓴다. 같은 시리즈 안에서 `seriesOrder`가 겹치면 빌드를 실패시킨다.
-- 카테고리/시리즈 표시 이름과 블로그 이름, 소개 문구는 `site.config.ts`에서 관리한다.
+- 블로그 이름, 소개 문구, 프로필은 `site.config.ts`에서 관리한다. 카테고리/시리즈 표시 이름은 `content/_config/*.json` (위 참고, 2026-10-08에 `site.config.ts`에서 옮김).
 
 ## 4. Markdown / Obsidian 처리 (확정)
 
