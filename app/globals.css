@@ -289,6 +289,25 @@ body {
     display: block;
   }
 }
+/* 라이트/다크 숲 그림이 따로 있는 경우(모바일) 테마에 맞는 쪽만 보인다.
+   두 그림의 구도가 조금 달라서 겹쳐 서서히 바꾸지 않고 바로 바꾼다 */
+.hero-forest-dark {
+  display: none;
+}
+:root[data-theme="dark"] .hero-forest-light {
+  display: none;
+}
+:root[data-theme="dark"] .hero-forest-dark {
+  display: inline;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .hero-forest-light {
+    display: none;
+  }
+  :root:not([data-theme="light"]) .hero-forest-dark {
+    display: inline;
+  }
+}
 /* 붓 스트로크: pathLength=1 기준으로 dashoffset을 1 → 0 으로 줄이며 그린다 */
 .brush-stroke {
   stroke-dasharray: 1 2;
