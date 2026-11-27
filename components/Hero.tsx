@@ -1,16 +1,23 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { currentTheme } from "@/lib/theme";
 
 // 홈 히어로: 숲 그림 위에 캐릭터를 올리고, 처음 들어올 때 붓으로 칠하듯 드러낸 뒤 캐릭터만 손그림처럼 떨리게 한다.
-// 값은 AGENTS.md 7장(확정 값)을 따른다. 모바일은 세로 구도 그림(forest-mobile.webp)을 쓴다.
+// 값은 AGENTS.md 7장(확정 값)을 따른다.
+// 데스크톱 숲 그림은 투명 배경이라 다크 모드에서는 뒤에 하늘색(--sky)을 깐다.
+// 모바일은 세로 구도 그림을 쓰고, 라이트/다크 그림이 따로 있어서 테마에 맞는 그림으로 바꿔 끼운다.
 
 type Strokes = { rows: number[]; x0: number; x1: number; start: number; step: number; dur: number; tilt: number };
+
+// 숲 그림 한 장. 폭은 viewBox 폭과 같고, 높이는 원본 비율로 환산한 값이다 (그림마다 원본 크기가 조금씩 다르다)
+type ForestImage = { href: string; height: number };
 
 type Variant = {
   media: string;
   viewBox: string;
-  forest: { href: string; width: number; height: number };
+  // dark가 없으면 테마와 관계없이 light 그림 하나만 쓴다
+  forest: { width: number; light: ForestImage; dark?: ForestImage };
   char: { x: number; y: number; size: number };
   // 일렁임: 표시 폭 557px에서 고른 값을 캐릭터 폭(viewBox 단위)에 맞게 환산한 값
   // scale = 0.0081 × 폭, baseFrequency = (4.46, 5.57) / 폭
@@ -25,7 +32,7 @@ const VARIANTS = {
   desktop: {
     media: "(width >= 40rem)",
     viewBox: "0 0 1920 1010",
-    forest: { href: "/forest.webp", width: 1920, height: 1076 },
+    forest: { width: 1920, light: { href: "/forest.webp", height: 1076 } },
     char: { x: 650, y: 389, size: 620 },
     wobble: { baseFrequency: "0.00719 0.00898", scale: 5 },
     forestStrokes: {
@@ -42,7 +49,11 @@ const VARIANTS = {
   mobile: {
     media: "(width < 40rem)",
     viewBox: "0 0 816 1400",
-    forest: { href: "/forest-mobile.webp", width: 816, height: 1456 },
+    forest: {
+      width: 816,
+      light: { href: "/forest-mobile-light.webp", height: 1458 }, // 원본 1648×2944
+      dark: { href: "/forest-mobile-dark.webp", height: 1466 }, // 원본 1648×2960
+    },
     char: { x: 188, y: 933, size: 440 },
     wobble: { baseFrequency: "0.01014 0.01266", scale: 3.56 },
     forestStrokes: {
@@ -84,6 +95,7 @@ function HeroScene({ name }: { name: keyof typeof VARIANTS }) {
 
   const svgRef = useRef<SVGSVGElement>(null);
   const forestImg = useRef<SVGImageElement>(null);
+  const forestDarkImg = useRef<SVGImageElement>(null);
   const charImg = useRef<SVGImageElement>(null);
   const forestGroup = useRef<SVGGElement>(null);
   const charGroup = useRef<SVGGElement>(null);
@@ -125,9 +137,18 @@ function HeroScene({ name }: { name: keyof typeof VARIANTS }) {
     };
 
     // ----- 이미지 불러오기 + 붓 등장 -----
+    // 숲 그림은 지금 테마의 것만 받는다. 어느 쪽을 보여줄지는 CSS(.hero-forest-light/-dark)가 정한다
+    const forestFor = (theme: "light" | "dark") =>
+      theme === "dark" && v.forest.dark
+        ? { img: forestDarkImg.current!, href: v.forest.dark.href }
+        : { img: forestImg.current!, href: v.forest.light.href };
+    const loadForest = (theme: "light" | "dark") => {
+      const { img, href } = forestFor(theme);
+      if (!img.getAttribute("href")) img.setAttribute("href", href);
+    };
     const start = (animate: boolean) => {
       started = true;
-      const imgs = [forestImg.current!, charImg.current!];
+      const imgs = [forestFor(currentTheme()).img, charImg.current!];
       const loaded = Promise.all(
         imgs.map(
           (img) =>
@@ -137,7 +158,7 @@ function HeroScene({ name }: { name: keyof typeof VARIANTS }) {
             }),
         ),
       );
-      forestImg.current!.setAttribute("href", v.forest.href);
+      loadForest(currentTheme());
       charImg.current!.setAttribute("href", CHAR_HREF);
 
       if (reduce) {
@@ -185,12 +206,30 @@ function HeroScene({ name }: { name: keyof typeof VARIANTS }) {
     io.observe(svg);
     document.addEventListener("visibilitychange", syncLoop);
 
+    // 테마마다 그림이 다르면: 테마가 바뀌면 그 테마의 그림을 받고,
+    // 토글에 마우스를 올리거나 포커스가 가면(html[data-theme-preload], ThemeToggle.tsx) 반대쪽 그림도 미리 받는다
+    const root = document.documentElement;
+    const colorScheme = window.matchMedia("(prefers-color-scheme: dark)");
+    const onThemeChange = () => {
+      if (!started || !v.forest.dark) return;
+      loadForest(currentTheme());
+      if (root.hasAttribute("data-theme-preload")) {
+        loadForest("light");
+        loadForest("dark");
+      }
+    };
+    const themeObserver = new MutationObserver(onThemeChange);
+    themeObserver.observe(root, { attributes: true, attributeFilter: ["data-theme", "data-theme-preload"] });
+    colorScheme.addEventListener("change", onThemeChange);
+
     return () => {
       timers.forEach(clearTimeout);
       cancelAnimationFrame(raf);
       media.removeEventListener("change", onMediaChange);
       io.disconnect();
       document.removeEventListener("visibilitychange", syncLoop);
+      themeObserver.disconnect();
+      colorScheme.removeEventListener("change", onThemeChange);
     };
     // 그림 설정은 모듈 상수라서 바뀌지 않는다
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -255,9 +294,27 @@ function HeroScene({ name }: { name: keyof typeof VARIANTS }) {
         </mask>
       </defs>
 
-      {/* href는 JS가 이 그림이 보일 때만 넣는다 (안 보이는 쪽 그림을 내려받지 않게) */}
+      {/* href는 JS가 이 그림이 보일 때만 넣는다 (안 보이는 쪽 그림을 내려받지 않게).
+          라이트/다크 그림이 따로 있으면 둘 다 두고 CSS가 테마에 맞는 쪽만 보여준다 */}
       <g ref={forestGroup} mask={`url(#${id("mask-forest")})`}>
-        <image ref={forestImg} x={0} y={0} width={v.forest.width} height={v.forest.height} />
+        <image
+          ref={forestImg}
+          className={v.forest.dark ? "hero-forest-light" : undefined}
+          x={0}
+          y={0}
+          width={v.forest.width}
+          height={v.forest.light.height}
+        />
+        {v.forest.dark && (
+          <image
+            ref={forestDarkImg}
+            className="hero-forest-dark"
+            x={0}
+            y={0}
+            width={v.forest.width}
+            height={v.forest.dark.height}
+          />
+        )}
       </g>
       <g ref={charGroup} mask={`url(#${id("mask-char")})`}>
         <image

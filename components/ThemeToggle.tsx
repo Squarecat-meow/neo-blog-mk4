@@ -1,25 +1,20 @@
 "use client";
 
 import { Moon, Sun } from "lucide-react";
-
-// 지금 화면에 적용된 테마. data-theme이 없으면 OS 설정을 따른다
-function currentTheme(): "light" | "dark" {
-  const set = document.documentElement.dataset.theme;
-  if (set === "light" || set === "dark") return set;
-  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-}
+import { currentTheme } from "@/lib/theme";
 
 // 글 페이지에서는 테마를 바꿀 때 숲 그림이 서서히 바뀐다 (globals.css의 .article-backdrop).
+// 홈 히어로도 모바일에서는 테마마다 숲 그림이 다르다 (Hero.tsx).
 // 처음에는 지금 테마의 그림만 받으므로, 바꿀 기미(마우스 올림, 포커스)가 보이면 반대쪽 그림도 미리 받게 한다.
-function preloadArticleBackdrop() {
-  if (document.querySelector(".article-backdrop")) document.documentElement.dataset.themePreload = "";
+function preloadThemeImages() {
+  if (document.querySelector(".article-backdrop, .hero")) document.documentElement.dataset.themePreload = "";
 }
 
 // 바꿀 테마의 그림이 준비될 때까지 기다린다 (최대 0.4초). 안 기다리면 빈 층이 페이드되다가 그림이 툭 나타난다
 async function waitForArticleBackdrop(next: "light" | "dark") {
   const backdrop = document.querySelector(".article-backdrop");
   if (!backdrop) return;
-  preloadArticleBackdrop();
+  preloadThemeImages();
   const layer = getComputedStyle(backdrop, next === "dark" ? "::after" : "::before").backgroundImage;
   const src = layer.match(/url\("?(.+?)"?\)/)?.[1];
   if (!src) return;
@@ -48,8 +43,8 @@ export default function ThemeToggle() {
     <button
       type="button"
       onClick={toggleTheme}
-      onPointerEnter={preloadArticleBackdrop}
-      onFocus={preloadArticleBackdrop}
+      onPointerEnter={preloadThemeImages}
+      onFocus={preloadThemeImages}
       className="theme-toggle"
     >
       <span className="when-light">
