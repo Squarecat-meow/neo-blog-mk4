@@ -209,6 +209,7 @@ seriesOrder: 2           # 선택
   - 받는 쪽 테마를 모르므로 라이트 색만 쓴다. X(트위터)는 `summary_large_image` 카드.
   - `opengraph-image` 파일 규칙 대신 `og.png/route.tsx` 라우트 핸들러를 쓴다. 파일 규칙은 확장자 없는 파일(`opengraph-image`)을 만들어서 호스팅에 따라 `image/png`로 서빙되지 않을 수 있기 때문이다. 정적 export에서는 라우트에 `dynamic = "force-static"`이 필요하다.
   - satori는 woff2와 webp를 읽지 못해서 `assets/`에 따로 둔다: 고운 바탕 Bold 원본 TTF(`assets/fonts/`, OFL, 라이선스 파일 포함, 8MB라 Bold만), 배경 JPEG(`assets/og/`, 한 번 변환해 커밋한 파일. 빌드 파이프라인이 아니다).
+    - 스킨 그림을 바꾸면 배경 JPEG도 다시 만든다 (1200×630, 품질 88). `hero.jpg`: 데스크톱 히어로 장면(`--paper` 바탕 + `forest.webp` + `character.webp`, viewBox 좌표 그대로)을 1200 폭으로 줄이고 위 630px. `article-forest.jpg`: `article-forest-light.webp`를 1200:630 비율로 아래 기준으로 잘라 줄인 것.
 
 ### 통계
 
